@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MADE planificateur</title>
+<link rel="icon" href="data:image/webp;base64,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">
+
+<!-- ============================================================
+     CONFIGURATION — à remplir avant déploiement
+     ============================================================ -->
+<script>
+  window.MADE_CONFIG = {
+    SUPABASE_URL: "https://ompimzdoerosvoqtjqkd.supabase.co",
+    SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcGltemRvZXJvc3ZvcXRqcWtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4NDM0NjYsImV4cCI6MjEwNTQxOTQ2Nn0.Q-2hdPl4ZqQJxcXOKP5ls2R5DTzlUBc78Jnd6ryOkPM",
+    TURNSTILE_SITE_KEY: "VOTRE_CLE_SITE_TURNSTILE" // Cloudflare Turnstile — remplacez par votre vraie clé une fois votre domaine fixé
+  };
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
+<style>
+  :root{
+    --green: #33421f;
+    --green-dark: #232e15;
+    --gold: #c9a34d;
+    --gold-light: #e4c878;
+    --beige: #f4efe1;
+    --white: #ffffff;
+    --ink: #2a2a22;
+    --muted: #7a7462;
+    --orange: #e8973a;
+    --yellow: #eec94a;
+    --vert-ok: #4c7a41;
+    --radius: 14px;
+    --shadow: 0 4px 18px rgba(51,66,31,0.12);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--beige);
+    color:var(--ink);
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  #app{max-width:900px;margin:0 auto;min-height:100%;padding:0 16px 40px;}
+  a{color:inherit;text-decoration:none;}
+  button, select, input, textarea{font-family:inherit;font-size:15px;}
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    background:var(--green);color:var(--white);border:none;border-radius:10px;
+    padding:12px 18px;cursor:pointer;font-weight:600;transition:.15s;
+  }
+  .btn:hover{background:var(--green-dark);}
+  .btn.gold{background:var(--gold);color:var(--green-dark);}
+  .btn.gold:hover{background:var(--gold-light);}
+  .btn.outline{background:transparent;color:var(--green);border:1.5px solid var(--green);}
+  .btn.danger{background:#b3462c;}
+  .btn.danger:hover{background:#8f3821;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-weight:600;font-size:13px;color:var(--green-dark);margin-bottom:6px;}
+  .field input[type=text], .field input[type=email], .field input[type=password],
+  .field select, .field textarea{
+    width:100%;padding:11px 12px;border:1.5px solid #ddd3ba;border-radius:10px;
+    background:var(--white);color:var(--ink);
+  }
+  .field textarea{min-height:90px;resize:vertical;}
+  .field input:focus, .field select:focus, .field textarea:focus{
+    outline:none;border-color:var(--gold);
+  }
+  .password-wrap{position:relative;}
+  .password-wrap input{padding-right:44px;}
+  .password-toggle{
+    position:absolute;right:10px;top:50%;transform:translateY(-50%);
+    background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;font-size:13px;font-weight:600;
+  }
+  .card-box{
+    background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:20px;margin-bottom:16px;
+  }
+  .auth-screen{
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:30px 16px;
+  }
+  .auth-logo{width:90px;height:90px;object-fit:contain;margin-bottom:10px;}
+  .auth-title{font-weight:800;color:var(--green-dark);font-size:22px;margin:0 0 4px;text-align:center;}
+  .auth-sub{color:var(--muted);font-size:14px;margin:0 0 22px;text-align:center;}
+  .auth-card{width:100%;max-width:400px;}
+  .auth-switch{text-align:center;margin-top:14px;font-size:14px;color:var(--muted);}
+  .auth-switch a{color:var(--green);font-weight:700;}
+  .error-msg{background:#fbe6e0;color:#8f3821;border-radius:8px;padding:10px 12px;font-size:14px;margin-bottom:14px;}
+  .ok-msg{background:#e7f0e3;color:var(--green-dark);border-radius:8px;padding:10px 12px;font-size:14px;margin-bottom:14px;}
+
+  header.topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 0 10px;gap:10px;flex-wrap:wrap;
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand img{width:38px;height:38px;object-fit:contain;}
+  .brand span{font-weight:800;color:var(--green-dark);font-size:17px;letter-spacing:.2px;}
+  .profile-chip{
+    display:flex;align-items:center;gap:10px;background:var(--white);
+    border-radius:999px;padding:6px 14px 6px 6px;box-shadow:var(--shadow);cursor:pointer;border:none;
+  }
+  .profile-chip .avatar{
+    width:32px;height:32px;border-radius:50%;object-fit:cover;background:var(--gold-light);
+    display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--green-dark);font-size:13px;
+  }
+  .profile-chip span{font-weight:700;font-size:14px;color:var(--green-dark);}
+
+  .month-nav{display:flex;align-items:center;justify-content:space-between;margin:6px 0 14px;}
+  .month-nav h2{margin:0;color:var(--green-dark);font-size:19px;text-transform:capitalize;}
+  .month-nav button{
+    background:var(--white);border:1.5px solid #e2d8bd;color:var(--green);border-radius:8px;
+    width:36px;height:36px;cursor:pointer;font-size:16px;font-weight:700;
+  }
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;font-size:13px;color:var(--muted);}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+  .cal-dow{text-align:center;font-size:12px;font-weight:700;color:var(--muted);padding-bottom:4px;}
+  .cal-day{
+    aspect-ratio:1/1;background:var(--white);border-radius:10px;border:1.5px solid #eee3c8;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    cursor:pointer;position:relative;min-height:52px;overflow:hidden;
+  }
+  .cal-day.empty{background:transparent;border:none;cursor:default;}
+  .cal-day .num{font-weight:700;font-size:14px;color:var(--ink);position:relative;z-index:2;}
+  .cal-day.today .num{color:var(--gold);}
+  .cal-day.today{border-color:var(--gold);border-width:2px;}
+  .cal-day .dots{display:flex;gap:3px;position:relative;z-index:2;}
+  .cal-day .dots .dot{width:6px;height:6px;}
+  .cal-day.status-orange{background:#fdecd8;border-color:var(--orange);}
+  .cal-day.status-yellow{background:#fdf6d8;border-color:var(--yellow);}
+  .cal-day.status-green{background:#e6efe2;border-color:var(--vert-ok);}
+  .cal-day.has-thumb .num{
+    background:rgba(255,255,255,.88);border-radius:6px;padding:0 4px;
+  }
+  .thumb-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
+  .thumb-bg-empty{background:var(--beige);}
+  .platform-badge{
+    position:absolute;bottom:3px;right:3px;width:17px;height:17px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;color:#fff;font-size:8px;
+    z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.3);
+  }
+  .count-badge{
+    position:absolute;top:2px;right:2px;background:rgba(35,46,21,.75);color:#fff;
+    font-size:9px;font-weight:700;border-radius:999px;padding:1px 5px;z-index:2;
+  }
+  .toolbar-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+  .tutorial-overlay{position:fixed;inset:0;background:rgba(35,46,21,.6);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;}
+  .tutorial-box{background:var(--white);border-radius:16px;padding:26px;max-width:420px;width:100%;max-height:85vh;overflow-y:auto;}
+  .tutorial-box h2{color:var(--green-dark);margin:0 0 12px;font-size:19px;}
+  .tutorial-box ul{padding-left:18px;color:var(--ink);font-size:14px;line-height:1.7;margin:0 0 18px;}
+
+  .page-title-row{display:flex;align-items:center;gap:10px;margin:16px 0;}
+  .back-btn{
+    background:var(--white);border:1.5px solid #e2d8bd;border-radius:8px;
+    width:36px;height:36px;cursor:pointer;font-size:16px;color:var(--green);
+  }
+  .page-title-row h2{margin:0;color:var(--green-dark);text-transform:capitalize;font-size:19px;}
+
+  .fiche-item{
+    display:flex;align-items:center;gap:12px;background:var(--white);border-radius:12px;
+    padding:12px 14px;margin-bottom:10px;box-shadow:var(--shadow);cursor:pointer;
+  }
+  .fiche-item .thumb{
+    width:48px;height:48px;border-radius:8px;object-fit:cover;background:var(--beige);
+    flex-shrink:0;
+  }
+  .fiche-item .info{flex:1;min-width:0;}
+  .fiche-item .info .l1{font-weight:700;color:var(--green-dark);font-size:14px;}
+  .fiche-item .info .l2{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .status-pill{
+    font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap;
+  }
+  .status-pill.a_faire{background:#fdecd8;color:#8a5a15;}
+  .status-pill.programme{background:#fdf6d8;color:#8a7515;}
+  .status-pill.publie{background:#e6efe2;color:#345c2b;}
+
+  .empty-state{text-align:center;color:var(--muted);padding:30px 10px;font-size:14px;}
+
+  .photo-carousel{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;margin-bottom:10px;-webkit-overflow-scrolling:touch;}
+  .photo-slide{position:relative;flex:0 0 85%;scroll-snap-align:center;background:var(--beige);border-radius:10px;overflow:hidden;min-height:220px;max-height:340px;display:flex;align-items:center;justify-content:center;}
+  .photo-slide img{width:100%;height:100%;object-fit:contain;max-height:340px;}
+  .photo-actions{position:absolute;bottom:8px;left:0;right:0;display:flex;justify-content:center;gap:8px;}
+  .photo-actions button{background:rgba(35,46,21,.78);color:#fff;border:none;border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:600;}
+  .photo-add-tile{flex:0 0 85%;scroll-snap-align:center;min-height:220px;max-height:340px;display:flex;align-items:center;justify-content:center;
+    border:1.5px dashed #ddd3ba;border-radius:10px;color:var(--muted);cursor:pointer;background:var(--white);font-weight:600;font-size:14px;}
+  .file-btn{
+    display:inline-block;background:var(--white);border:1.5px dashed #ddd3ba;border-radius:10px;
+    padding:12px;text-align:center;cursor:pointer;color:var(--muted);width:100%;font-size:14px;
+  }
+
+  .fiche-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
+  .fiche-actions .btn{flex:1;min-width:140px;}
+
+  .profile-avatar-big{
+    width:88px;height:88px;border-radius:50%;object-fit:cover;background:var(--gold-light);
+    margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:28px;
+    font-weight:700;color:var(--green-dark);
+  }
+  .center{text-align:center;}
+  .spinner{
+    width:22px;height:22px;border:3px solid #ddd3ba;border-top-color:var(--green);border-radius:50%;
+    animation:spin .7s linear infinite;margin:20px auto;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ============================================================
+   MADE PLANIFICATEUR — logique application (SPA, vanilla JS)
+   ============================================================ */
+
+if (!window.supabase) {
+  document.getElementById("app").innerHTML =
+    '<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#8f3821;">' +
+    'La librairie Supabase n\'a pas pu se charger (connexion internet ou blocage réseau). ' +
+    'Rechargez la page ou vérifiez votre connexion.</div>';
+  throw new Error("Supabase JS n'est pas chargé.");
+}
+
+const LOGO_DATA_URI = "data:image/webp;base64,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";
+
+if (!window.MADE_CONFIG.SUPABASE_URL || window.MADE_CONFIG.SUPABASE_URL.includes("VOTRE-PROJET")
+    || !window.MADE_CONFIG.SUPABASE_ANON_KEY || window.MADE_CONFIG.SUPABASE_ANON_KEY.includes("VOTRE_CLE")) {
+  document.getElementById("app").innerHTML =
+    '<div style="padding:40px 20px;text-align:center;font-family:sans-serif;color:#8f3821;">' +
+    '<strong>Configuration manquante.</strong><br><br>' +
+    'Ouvrez le fichier index.html et remplacez SUPABASE_URL et SUPABASE_ANON_KEY, tout en haut, ' +
+    'par les vraies valeurs de votre projet Supabase (Project Settings → API).</div>';
+  throw new Error("MADE_CONFIG non renseigné.");
+}
+
+const supabaseClient = window.supabase.createClient(
+  window.MADE_CONFIG.SUPABASE_URL,
+  window.MADE_CONFIG.SUPABASE_ANON_KEY
+);
+
+const PLATFORMS = ["Instagram","TikTok","Facebook","YouTube","LinkedIn","X (Twitter)","Autre"];
+const PLATFORM_ICON = {
+  "Instagram": "fa-brands fa-instagram",
+  "TikTok": "fa-brands fa-tiktok",
+  "Facebook": "fa-brands fa-facebook-f",
+  "YouTube": "fa-brands fa-youtube",
+  "LinkedIn": "fa-brands fa-linkedin-in",
+  "X (Twitter)": "fa-brands fa-x-twitter",
+  "Autre": "fa-solid fa-share-nodes"
+};
+const SOCIAL_LINK_PLATFORMS = ["Instagram","TikTok","Facebook","YouTube","LinkedIn","X (Twitter)"];
+const FORMATS = ["Publication","Réel","Carrousel","Story","Vidéo","Live","Autre"];
+const CATEGORIES = ["Visibilité","Emotionnel","Valeur","Autorité","Conversion","Autre"];
+const HOURS = Array.from({length:24}, (_,h) => String(h).padStart(2,"0") + ":00");
+const STATUS_LABEL = { a_faire: "À faire", programme: "Programmé", publie: "Posté" };
+const STATUS_CLASS = { a_faire: "status-orange", programme: "status-yellow", publie: "status-green" };
+const MONTHS_FR = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+const DOW_FR = ["L","M","M","J","V","S","D"];
+
+let state = {
+  session: null,
+  profile: null,
+  viewMonth: new Date().getMonth(),
+  viewYear: new Date().getFullYear(),
+  monthCards: [],       // cards for the visible month
+  turnstileWidgetId: null
+};
+
+const app = document.getElementById("app");
+function h(str){ // tiny escape helper
+  const d = document.createElement("div"); d.textContent = str ?? ""; return d.innerHTML;
+}
+function friendlyError(message){
+  if (message === "Failed to fetch") {
+    return "Impossible de joindre Supabase. Vérifiez : 1) que SUPABASE_URL et SUPABASE_ANON_KEY en haut du fichier sont bien ceux de votre projet, 2) que votre projet Supabase n'est pas en pause, 3) votre connexion internet.";
+  }
+  return message;
+}
+function pad(n){ return String(n).padStart(2,"0"); }
+function fmtDate(y,m,d){ return `${y}-${pad(m+1)}-${pad(d)}`; }
+
+/* ---------------- ROUTER ---------------- */
+let previousHash = location.hash;
+let ficheDirtyCheck = null; // fonction qui renvoie true s'il y a des modifications non enregistrées sur la fiche affichée
+let suppressGuard = false;
+
+window.addEventListener("hashchange", () => {
+  if (!suppressGuard && ficheDirtyCheck && ficheDirtyCheck()) {
+    const ok = confirm("Vous avez des modifications non enregistrées sur cette fiche. Quitter sans enregistrer ?");
+    if (!ok) {
+      suppressGuard = true;
+      location.hash = previousHash;
+      suppressGuard = false;
+      return;
+    }
+  }
+  previousHash = location.hash;
+  ficheDirtyCheck = null;
+  route();
+});
+window.addEventListener("beforeunload", (e) => {
+  if (ficheDirtyCheck && ficheDirtyCheck()) {
+    e.preventDefault();
+    e.returnValue = "";
+  }
+});
+window.addEventListener("DOMContentLoaded", init);
+
+async function init(){
+  const { data } = await supabaseClient.auth.getSession();
+  state.session = data.session;
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    state.session = session;
+  });
+  if (state.session) await loadProfile();
+  route();
+}
+
+async function route(){
+  const hash = location.hash || "#/";
+  if (!state.session) {
+    if (hash.startsWith("#/signup")) return renderSignup();
+    return renderLogin();
+  }
+  if (!state.profile) await loadProfile();
+
+  if (hash === "#/" || hash === "") return renderHome();
+  if (hash.startsWith("#/jour/")) return renderDay(hash.replace("#/jour/",""));
+  if (hash.startsWith("#/fiche/nouvelle/")) return renderFiche(null, hash.replace("#/fiche/nouvelle/",""));
+  if (hash.startsWith("#/fiche/")) return renderFiche(hash.replace("#/fiche/",""));
+  if (hash === "#/profil") return renderProfile();
+  if (hash === "#/admin") return renderAdmin();
+  if (hash === "#/a-faire") return renderTodoList();
+  if (hash === "#/corbeille") return renderTrash();
+  renderHome();
+}
+
+async function loadProfile(){
+  const uid = state.session.user.id;
+  let { data } = await supabaseClient.from("profiles").select("*").eq("id", uid).maybeSingle();
+  if (!data) {
+    const { data: created } = await supabaseClient.from("profiles")
+      .insert({ id: uid, full_name: state.session.user.email.split("@")[0] })
+      .select().single();
+    data = created;
+  }
+  state.profile = data;
+}
+
+/* ---------------- TURNSTILE (captcha) ---------------- */
+function isTurnstileConfigured(){
+  const k = window.MADE_CONFIG.TURNSTILE_SITE_KEY || "";
+  return !!k && !k.startsWith("VOTRE");
+}
+function mountTurnstile(){
+  const el = document.getElementById("turnstile-box");
+  if (!el) return;
+  el.innerHTML = "";
+  state.turnstileWidgetId = null;
+  if (!isTurnstileConfigured()) return; // pas de clé réelle configurée -> pas de captcha à afficher
+  let attempts = 0;
+  const tryRender = () => {
+    if (window.turnstile) {
+      state.turnstileWidgetId = window.turnstile.render(el, {
+        sitekey: window.MADE_CONFIG.TURNSTILE_SITE_KEY,
+        theme: "light"
+      });
+    } else if (attempts < 40) {
+      attempts++;
+      setTimeout(tryRender, 150); // le script Turnstile charge en différé, on patiente
+    } else {
+      el.innerHTML = `<div class="error-msg">Le captcha n'a pas pu se charger.</div>`;
+    }
+  };
+  tryRender();
+}
+function getTurnstileToken(){
+  if (!window.turnstile || state.turnstileWidgetId === null) return "";
+  return window.turnstile.getResponse(state.turnstileWidgetId) || "";
+}
+
+/* ---------------- AUTH SCREENS ---------------- */
+function renderLogin(){
+  app.innerHTML = `
+    <div class="auth-screen">
+      <img src="${LOGO_DATA_URI}" class="auth-logo" alt="MADE Community">
+      <h1 class="auth-title">MADE planificateur</h1>
+      <p class="auth-sub">Connectez-vous à votre calendrier éditorial</p>
+      <div class="card-box auth-card">
+        <div id="auth-msg"></div>
+        <form id="login-form">
+          <div class="field">
+            <label>Adresse e-mail</label>
+            <input type="email" id="li-email" required autocomplete="email">
+          </div>
+          <div class="field">
+            <label>Mot de passe</label>
+            <div class="password-wrap">
+              <input type="password" id="li-pass" required autocomplete="current-password">
+              <button type="button" class="password-toggle" data-target="li-pass">Afficher</button>
+            </div>
+          </div>
+          <div id="turnstile-box"></div>
+          <button class="btn gold" type="submit" style="width:100%;" id="login-btn">Se connecter</button>
+        </form>
+      </div>
+      <p class="auth-switch">Pas encore de compte ? <a href="#/signup">Créer un compte</a></p>
+    </div>
+  `;
+  mountTurnstile();
+  wirePasswordToggles();
+  document.getElementById("login-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById("auth-msg");
+    msg.innerHTML = "";
+    const token = getTurnstileToken();
+    if (isTurnstileConfigured() && !token) {
+      msg.innerHTML = `<div class="error-msg">Merci de valider le captcha.</div>`;
+      return;
+    }
+    const btn = document.getElementById("login-btn");
+    btn.disabled = true; btn.textContent = "Connexion...";
+    const email = document.getElementById("li-email").value.trim();
+    const password = document.getElementById("li-pass").value;
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    btn.disabled = false; btn.textContent = "Se connecter";
+    if (error) {
+      msg.innerHTML = `<div class="error-msg">${h(friendlyError(error.message))}</div>`;
+      return;
+    }
+    const { data } = await supabaseClient.auth.getSession();
+    state.session = data.session;
+    await loadProfile();
+    location.hash = "#/";
+    route();
+  });
+}
+
+function renderSignup(){
+  app.innerHTML = `
+    <div class="auth-screen">
+      <img src="${LOGO_DATA_URI}" class="auth-logo" alt="MADE Community">
+      <h1 class="auth-title">Créer un compte</h1>
+      <p class="auth-sub">Rejoignez MADE planificateur</p>
+      <div class="card-box auth-card">
+        <div id="auth-msg"></div>
+        <form id="signup-form">
+          <div class="field">
+            <label>Nom / prénom</label>
+            <input type="text" id="su-name" required autocomplete="name">
+          </div>
+          <div class="field">
+            <label>Adresse e-mail</label>
+            <input type="email" id="su-email" required autocomplete="email">
+          </div>
+          <div class="field">
+            <label>Mot de passe</label>
+            <div class="password-wrap">
+              <input type="password" id="su-pass" required minlength="6" autocomplete="new-password">
+              <button type="button" class="password-toggle" data-target="su-pass">Afficher</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Confirmer le mot de passe</label>
+            <div class="password-wrap">
+              <input type="password" id="su-pass2" required minlength="6" autocomplete="new-password">
+              <button type="button" class="password-toggle" data-target="su-pass2">Afficher</button>
+            </div>
+          </div>
+          <div id="turnstile-box"></div>
+          <button class="btn gold" type="submit" style="width:100%;" id="signup-btn">Créer mon compte</button>
+        </form>
+      </div>
+      <p class="auth-switch">Déjà un compte ? <a href="#/">Se connecter</a></p>
+    </div>
+  `;
+  mountTurnstile();
+  wirePasswordToggles();
+  document.getElementById("signup-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById("auth-msg");
+    msg.innerHTML = "";
+    const name = document.getElementById("su-name").value.trim();
+    const email = document.getElementById("su-email").value.trim();
+    const pass = document.getElementById("su-pass").value;
+    const pass2 = document.getElementById("su-pass2").value;
+    if (pass !== pass2) {
+      msg.innerHTML = `<div class="error-msg">Les mots de passe ne correspondent pas.</div>`;
+      return;
+    }
+    const token = getTurnstileToken();
+    if (isTurnstileConfigured() && !token) {
+      msg.innerHTML = `<div class="error-msg">Merci de valider le captcha.</div>`;
+      return;
+    }
+    const btn = document.getElementById("signup-btn");
+    btn.disabled = true; btn.textContent = "Création...";
+    const { data, error } = await supabaseClient.auth.signUp({ email, password: pass });
+    if (error) {
+      btn.disabled = false; btn.textContent = "Créer mon compte";
+      msg.innerHTML = `<div class="error-msg">${h(friendlyError(error.message))}</div>`;
+      return;
+    }
+    if (data.user) {
+      await supabaseClient.from("profiles").upsert({ id: data.user.id, full_name: name });
+    }
+    btn.disabled = false; btn.textContent = "Créer mon compte";
+    if (data.session) {
+      state.session = data.session;
+      await loadProfile();
+      location.hash = "#/";
+      route();
+    } else {
+      msg.innerHTML = `<div class="ok-msg">Compte créé ! Vérifiez votre boîte mail pour confirmer votre adresse, puis connectez-vous.</div>`;
+    }
+  });
+}
+
+function wirePasswordToggles(){
+  document.querySelectorAll(".password-toggle").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const input = document.getElementById(btn.dataset.target);
+      const showing = input.type === "text";
+      input.type = showing ? "password" : "text";
+      btn.textContent = showing ? "Afficher" : "Masquer";
+    });
+  });
+}
+
+/* ---------------- TOPBAR (shared) ---------------- */
+function topbarHTML(){
+  const name = state.profile?.full_name || state.session.user.email;
+  const avatar = state.profile?.avatar_url;
+  const initial = (name || "?").trim().charAt(0).toUpperCase();
+  return `
+    <header class="topbar">
+      <a href="#/" class="brand">
+        <img src="${LOGO_DATA_URI}" alt="MADE">
+        <span>MADE planificateur</span>
+      </a>
+      <div style="display:flex;align-items:center;gap:10px;">
+        ${state.profile?.is_admin ? `<button class="btn outline" style="padding:8px 14px;" onclick="location.hash='#/admin'">Vue d'ensemble</button>` : ""}
+        <button class="profile-chip" onclick="location.hash='#/profil'">
+          <span>${h(name)}</span>
+          ${avatar
+            ? `<img class="avatar" src="${h(avatar)}">`
+            : `<span class="avatar">${h(initial)}</span>`}
+        </button>
+      </div>
+    </header>
+  `;
+}
+
+/* ---------------- HOME: monthly calendar ---------------- */
+async function loadMonthCards(){
+  const y = state.viewYear, m = state.viewMonth;
+  const from = fmtDate(y, m, 1);
+  const lastDay = new Date(y, m+1, 0).getDate();
+  const to = fmtDate(y, m, lastDay);
+  const { data, error } = await supabaseClient
+    .from("content_cards")
+    .select("id, card_date, status, platform, image_url, post_time")
+    .is("deleted_at", null)
+    .gte("card_date", from)
+    .lte("card_date", to);
+  state.monthCards = error ? [] : (data || []);
+}
+
+const DOT_COLOR = { a_faire: "var(--orange)", programme: "var(--yellow)", publie: "var(--vert-ok)" };
+const STATUS_ORDER = ["a_faire", "programme", "publie"];
+
+async function renderHome(){
+  app.innerHTML = topbarHTML() + `<div id="cal-wrap" class="center"><div class="spinner"></div></div>`;
+  await loadMonthCards();
+
+  const y = state.viewYear, m = state.viewMonth;
+  const firstDow = (new Date(y, m, 1).getDay() + 6) % 7; // lundi=0
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const today = new Date();
+  const todayStr = fmtDate(today.getFullYear(), today.getMonth(), today.getDate());
+
+  const cardsByDay = {};
+  state.monthCards.forEach(c => {
+    if (!cardsByDay[c.card_date]) cardsByDay[c.card_date] = [];
+    cardsByDay[c.card_date].push(c);
+  });
+
+  function pickRepresentative(cards){
+    // priorité : une fiche avec photo, la plus tôt dans la journée
+    const sorted = cards.slice().sort((a,b) => (a.post_time||"99:99").localeCompare(b.post_time||"99:99"));
+    return sorted.find(c => c.image_url) || sorted[0];
+  }
+
+  function dayClass(cards){
+    if (!cards || !cards.length) return "";
+    const set = new Set(cards.map(c => c.status));
+    if (set.has("a_faire")) return "status-orange";
+    if (set.has("programme")) return "status-yellow";
+    return "status-green";
+  }
+
+  let cells = "";
+  for (let i = 0; i < firstDow; i++) cells += `<div class="cal-day empty"></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = fmtDate(y, m, d);
+    const cards = cardsByDay[dateStr];
+    const isToday = dateStr === todayStr;
+
+    if (cards && cards.length) {
+      const rep = pickRepresentative(cards);
+      const icon = PLATFORM_ICON[rep.platform] || PLATFORM_ICON["Autre"];
+      const badgeColor = DOT_COLOR[rep.status];
+      const otherStatuses = STATUS_ORDER.filter(s => s !== rep.status && cards.some(c => c.status === s));
+      cells += `
+        <div class="cal-day has-thumb ${isToday ? "today":""}" onclick="location.hash='#/jour/${dateStr}'">
+          ${rep.image_url ? `<img class="thumb-bg" src="${h(rep.image_url)}">` : `<div class="thumb-bg thumb-bg-empty"></div>`}
+          <span class="num">${d}</span>
+          ${cards.length > 1 ? `<span class="count-badge">${cards.length}</span>` : ""}
+          <span class="platform-badge" style="background:${badgeColor}"><i class="${icon}"></i></span>
+          ${otherStatuses.length ? `<span class="dots">${otherStatuses.map(s => `<span class="dot" style="background:${DOT_COLOR[s]}"></span>`).join("")}</span>` : ""}
+        </div>`;
+    } else {
+      cells += `
+        <div class="cal-day ${isToday ? "today":""}" onclick="location.hash='#/jour/${dateStr}'">
+          <span class="num">${d}</span>
+        </div>`;
+    }
+  }
+
+  document.getElementById("cal-wrap").innerHTML = `
+    <div class="month-nav">
+      <button onclick="changeMonth(-1)">‹</button>
+      <h2>${MONTHS_FR[m]} ${y}</h2>
+      <button onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="toolbar-row">
+      <button class="btn outline" style="padding:8px 14px;" onclick="goToday()">📅 Aujourd'hui</button>
+      <button class="btn outline" style="padding:8px 14px;" onclick="location.hash='#/a-faire'">📝 À faire</button>
+      <button class="btn outline" style="padding:8px 14px;" onclick="location.hash='#/corbeille'">🗑 Corbeille</button>
+    </div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--orange)"></span> À faire</span>
+      <span><span class="dot" style="background:var(--yellow)"></span> Programmé</span>
+      <span><span class="dot" style="background:var(--vert-ok)"></span> Posté</span>
+    </div>
+    <div class="cal-grid">
+      ${DOW_FR.map(d => `<div class="cal-dow">${d}</div>`).join("")}
+      ${cells}
+    </div>
+  `;
+  maybeShowTutorial();
+}
+
+function tutorialHTML(){
+  return `
+    <div class="tutorial-box">
+      <img src="${LOGO_DATA_URI}" style="width:56px;height:56px;object-fit:contain;margin-bottom:10px;">
+      <h2>Bienvenue sur MADE planificateur 👋</h2>
+      <ul>
+        <li>Cliquez sur un <strong>jour du calendrier</strong> pour voir ou créer du contenu. La miniature et le badge coloré indiquent la plateforme et le statut.</li>
+        <li>Couleurs : <strong style="color:var(--orange);">orange</strong> à faire, <strong style="color:#b89a1a;">jaune</strong> programmé, <strong style="color:var(--vert-ok);">vert</strong> posté.</li>
+        <li>En haut du calendrier : <strong>Aujourd'hui</strong> pour revenir au mois en cours, <strong>À faire</strong> pour voir toutes les fiches en attente, <strong>Corbeille</strong> pour restaurer une fiche supprimée par erreur.</li>
+        <li>Dans une fiche : plusieurs photos possibles, glissez pour les faire défiler, remplacez-les individuellement, et le bouton à côté de la plateforme ouvre directement votre page sur ce réseau.</li>
+        <li>Chaque fiche peut être <strong>dupliquée</strong>, <strong>déplacée</strong> à une autre date, ou mise à la <strong>corbeille</strong> (récupérable une semaine).</li>
+        <li>Votre nom/photo en haut à droite ouvrent votre profil : photo (galerie ou appareil photo), liens de vos réseaux sociaux, mot de passe, déconnexion.</li>
+      </ul>
+      <button class="btn gold" style="width:100%;" id="tutorial-close-btn">Compris, on y va !</button>
+    </div>
+  `;
+}
+
+function showTutorial(){
+  if (document.getElementById("tutorial-overlay")) return;
+  const overlay = document.createElement("div");
+  overlay.className = "tutorial-overlay";
+  overlay.id = "tutorial-overlay";
+  overlay.innerHTML = tutorialHTML();
+  document.body.appendChild(overlay);
+  document.getElementById("tutorial-close-btn").addEventListener("click", () => {
+    localStorage.setItem("made_tutorial_seen", "1");
+    overlay.remove();
+  });
+}
+
+function maybeShowTutorial(){
+  try { if (!localStorage.getItem("made_tutorial_seen")) showTutorial(); }
+  catch(e) { /* localStorage indisponible : on ignore simplement le tutoriel auto */ }
+}
+
+function goToday(){
+  const now = new Date();
+  state.viewMonth = now.getMonth();
+  state.viewYear = now.getFullYear();
+  renderHome();
+}
+
+function changeMonth(delta){
+  state.viewMonth += delta;
+  if (state.viewMonth < 0) { state.viewMonth = 11; state.viewYear--; }
+  if (state.viewMonth > 11) { state.viewMonth = 0; state.viewYear++; }
+  renderHome();
+}
+
+/* ---------------- DAY VIEW: list of fiches for one day ---------------- */
+async function renderDay(dateStr){
+  app.innerHTML = topbarHTML() + `
+    <div class="page-title-row">
+      <button class="back-btn" onclick="location.hash='#/'">‹</button>
+      <h2>${formatFrDate(dateStr)}</h2>
+    </div>
+    <div id="day-list" class="center"><div class="spinner"></div></div>
+    <button class="btn gold" style="width:100%;margin-top:6px;" onclick="location.hash='#/fiche/nouvelle/${dateStr}'">+ Créer une nouvelle fiche</button>
+  `;
+  const { data, error } = await supabaseClient
+    .from("content_cards")
+    .select("*")
+    .eq("card_date", dateStr)
+    .is("deleted_at", null)
+    .order("post_time", { ascending: true });
+
+  const list = document.getElementById("day-list");
+  if (error) { list.innerHTML = `<div class="error-msg">${h(error.message)}</div>`; return; }
+  if (!data || data.length === 0) {
+    list.innerHTML = `<div class="empty-state">Aucune fiche pour ce jour pour l'instant.</div>`;
+    return;
+  }
+  list.innerHTML = data.map(c => `
+    <div class="fiche-item" onclick="location.hash='#/fiche/${c.id}'">
+      ${c.image_url ? `<img class="thumb" src="${h(c.image_url)}">` : `<div class="thumb"></div>`}
+      <div class="info">
+        <div class="l1"><i class="${PLATFORM_ICON[c.platform] || PLATFORM_ICON["Autre"]}"></i> ${h(c.platform)} · ${h(c.format)}${c.post_time ? " · " + h(c.post_time) : ""}</div>
+        <div class="l2">${h(c.description || "Sans description")}</div>
+      </div>
+      <span class="status-pill ${c.status}">${STATUS_LABEL[c.status]}</span>
+    </div>
+  `).join("");
+}
+
+function formatFrDate(dateStr){
+  const [y,m,d] = dateStr.split("-").map(Number);
+  const date = new Date(y, m-1, d);
+  const dow = ["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"][date.getDay()];
+  return `${dow} ${d} ${MONTHS_FR[m-1]} ${y}`;
+}
+
+/* ---------------- FICHE (create / edit) ---------------- */
+let ficheImages = []; // {id, url: string|null (existant), file: File|null (nouveau), preview: string}
+let originalImageUrls = []; // photos présentes à l'ouverture de la fiche (pour savoir lesquelles nettoyer)
+
+function randId(){ return Math.random().toString(36).slice(2) + Date.now().toString(36); }
+
+function storagePathFromPublicUrl(url, bucket){
+  if (!url) return null;
+  const marker = `/object/public/${bucket}/`;
+  const idx = url.indexOf(marker);
+  if (idx === -1) return null;
+  return decodeURIComponent(url.slice(idx + marker.length));
+}
+
+async function deleteStorageImages(urls){
+  const paths = (urls || []).map(u => storagePathFromPublicUrl(u, "content-images")).filter(Boolean);
+  if (!paths.length) return;
+  try { await supabaseClient.storage.from("content-images").remove(paths); }
+  catch (e) { /* best-effort : on ne bloque pas l'action principale si le nettoyage échoue */ }
+}
+
+function cardImageUrls(card){
+  if (!card) return [];
+  if (Array.isArray(card.image_urls) && card.image_urls.length) return card.image_urls;
+  return card.image_url ? [card.image_url] : [];
+}
+
+function ficheImagesInit(card){
+  ficheImages = [];
+  const urls = cardImageUrls(card);
+  originalImageUrls = urls.slice();
+  urls.forEach(u => ficheImages.push({ id: randId(), url: u, file: null, preview: u }));
+}
+
+function openFilePicker(multiple, onFiles){
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  if (multiple) input.multiple = true;
+  input.onchange = () => { if (input.files.length) onFiles(Array.from(input.files)); };
+  input.click();
+}
+
+function renderPhotoCarousel(){
+  const wrap = document.getElementById("photo-carousel");
+  if (!wrap) return;
+  wrap.innerHTML = ficheImages.map((img, i) => `
+    <div class="photo-slide">
+      <img src="${h(img.preview)}">
+      <div class="photo-actions">
+        <button type="button" data-action="replace" data-idx="${i}">Remplacer</button>
+        <button type="button" data-action="remove" data-idx="${i}">Supprimer</button>
+      </div>
+    </div>
+  `).join("") + `<div class="photo-add-tile" id="photo-add-tile">📷 + Ajouter une photo</div>`;
+
+  wrap.querySelectorAll('[data-action="remove"]').forEach(btn => {
+    btn.addEventListener("click", () => {
+      ficheImages.splice(Number(btn.dataset.idx), 1);
+      renderPhotoCarousel();
+    });
+  });
+  wrap.querySelectorAll('[data-action="replace"]').forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.dataset.idx);
+      openFilePicker(false, (files) => {
+        ficheImages[idx] = { id: ficheImages[idx].id, url: null, file: files[0], preview: URL.createObjectURL(files[0]) };
+        renderPhotoCarousel();
+      });
+    });
+  });
+  const addTile = document.getElementById("photo-add-tile");
+  if (addTile) {
+    addTile.addEventListener("click", () => {
+      openFilePicker(true, (files) => {
+        files.forEach(file => ficheImages.push({ id: randId(), url: null, file, preview: URL.createObjectURL(file) }));
+        renderPhotoCarousel();
+      });
+    });
+  }
+}
+
+async function renderFiche(cardId, dateForNew){
+  let card = null;
+  if (cardId) {
+    const { data, error } = await supabaseClient.from("content_cards").select("*").eq("id", cardId).single();
+    if (error) { app.innerHTML = topbarHTML() + `<div class="error-msg">${h(error.message)}</div>`; return; }
+    card = data;
+  }
+  const dateStr = card ? card.card_date : dateForNew;
+  ficheImagesInit(card);
+
+  app.innerHTML = topbarHTML() + `
+    <div class="page-title-row">
+      <button class="back-btn" onclick="location.hash='#/jour/${dateStr}'">‹</button>
+      <h2>${formatFrDate(dateStr)}</h2>
+    </div>
+    <div class="card-box">
+      <div id="fiche-msg"></div>
+      <form id="fiche-form">
+        <div class="field">
+          <label>Photos du contenu</label>
+          <div class="photo-carousel" id="photo-carousel"></div>
+        </div>
+        <div class="field">
+          <label>Plateforme</label>
+          <div style="display:flex;gap:8px;">
+            <select id="f-platform" style="flex:1;">
+              ${PLATFORMS.map(p => `<option ${card?.platform===p?"selected":""}>${p}</option>`).join("")}
+            </select>
+            <button type="button" id="f-social-link-btn" class="btn outline" style="flex:none;padding:0 16px;" title="Ouvrir la page du réseau">
+              <i id="f-social-link-icon" class="${PLATFORM_ICON[card?.platform || PLATFORMS[0]]}"></i>
+            </button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Format</label>
+          <select id="f-format">
+            ${FORMATS.map(f => `<option ${card?.format===f?"selected":""}>${f}</option>`).join("")}
+          </select>
+        </div>
+        <div class="field">
+          <label>Catégorie</label>
+          <select id="f-category">
+            ${CATEGORIES.map(c => `<option ${card?.category===c?"selected":""}>${c}</option>`).join("")}
+          </select>
+        </div>
+        <div class="field">
+          <label>Heure de publication</label>
+          <select id="f-time">
+            <option value="">—</option>
+            ${HOURS.map(hh => `<option ${card?.post_time===hh?"selected":""}>${hh}</option>`).join("")}
+          </select>
+        </div>
+        <div class="field">
+          <label>Description</label>
+          <textarea id="f-desc" placeholder="Décrivez le contenu à poster...">${card ? h(card.description||"") : ""}</textarea>
+        </div>
+        <div class="field">
+          <label>Hashtags</label>
+          <textarea id="f-hashtags" placeholder="#exemple #madecommunity">${card ? h(card.hashtags||"") : ""}</textarea>
+        </div>
+        <div class="field">
+          <label>Observation</label>
+          <textarea id="f-observation" placeholder="Notes, remarques...">${card ? h(card.observation||"") : ""}</textarea>
+        </div>
+        <div class="field">
+          <label>Statut</label>
+          <select id="f-status">
+            <option value="a_faire" ${(!card || card.status==="a_faire")?"selected":""}>À faire</option>
+            <option value="programme" ${card?.status==="programme"?"selected":""}>Programmé</option>
+            <option value="publie" ${card?.status==="publie"?"selected":""}>Posté</option>
+          </select>
+        </div>
+        ${card ? `
+        <div class="field">
+          <label>Déplacer cette fiche à une autre date</label>
+          <div style="display:flex;gap:8px;">
+            <input type="date" id="f-move-date" value="${dateStr}" style="flex:1;padding:11px 12px;border:1.5px solid #ddd3ba;border-radius:10px;">
+            <button type="button" class="btn outline" id="move-fiche-btn">Déplacer</button>
+          </div>
+        </div>` : ""}
+        <div class="fiche-actions">
+          <button type="submit" class="btn gold">Enregistrer</button>
+          <button type="button" class="btn outline" id="new-fiche-btn">+ Créer une nouvelle fiche</button>
+          ${card ? `<button type="button" class="btn outline" id="dup-fiche-btn">⧉ Dupliquer</button>` : ""}
+          ${card ? `<button type="button" class="btn danger" id="del-fiche-btn">🗑 Supprimer</button>` : ""}
+        </div>
+      </form>
+    </div>
+  `;
+
+  renderPhotoCarousel();
+
+  function updateSocialLinkBtn(){
+    const p = document.getElementById("f-platform").value;
+    document.getElementById("f-social-link-icon").className = PLATFORM_ICON[p] || PLATFORM_ICON["Autre"];
+  }
+  document.getElementById("f-platform").addEventListener("change", updateSocialLinkBtn);
+  document.getElementById("f-social-link-btn").addEventListener("click", () => {
+    const p = document.getElementById("f-platform").value;
+    const link = (state.profile?.social_links || {})[p];
+    if (!link) {
+      alert(`Vous n'avez pas encore renseigné de lien ${p} dans votre profil. Ajoutez-le depuis votre profil (en haut à droite).`);
+      return;
+    }
+    window.open(link, "_blank", "noopener");
+  });
+
+  document.getElementById("fiche-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    await saveFiche(card, dateStr, false);
+  });
+  document.getElementById("new-fiche-btn").addEventListener("click", async () => {
+    await saveFiche(card, dateStr, true);
+  });
+  if (card) {
+    document.getElementById("del-fiche-btn").addEventListener("click", async () => {
+      if (!confirm("Mettre cette fiche à la corbeille ? Vous pourrez la restaurer depuis la Corbeille.")) return;
+      ficheDirtyCheck = null;
+      const { error } = await supabaseClient.from("content_cards").update({ deleted_at: new Date().toISOString() }).eq("id", card.id);
+      if (error) { alert(error.message); return; }
+      location.hash = `#/jour/${dateStr}`;
+    });
+    document.getElementById("dup-fiche-btn").addEventListener("click", async () => {
+      ficheDirtyCheck = null;
+      const dupPayload = {
+        user_id: state.session.user.id,
+        card_date: card.card_date,
+        platform: card.platform,
+        format: card.format,
+        category: card.category,
+        post_time: card.post_time,
+        description: card.description,
+        hashtags: card.hashtags,
+        observation: card.observation,
+        status: "a_faire",
+        image_urls: cardImageUrls(card),
+        image_url: card.image_url || null
+      };
+      const { data: created, error } = await supabaseClient.from("content_cards").insert(dupPayload).select().single();
+      if (error) { alert(error.message); return; }
+      location.hash = `#/fiche/${created.id}`;
+    });
+    document.getElementById("move-fiche-btn").addEventListener("click", async () => {
+      const newDate = document.getElementById("f-move-date").value;
+      if (!newDate) { alert("Choisissez une date."); return; }
+      if (newDate === dateStr) return;
+      ficheDirtyCheck = null;
+      const { error } = await supabaseClient.from("content_cards").update({ card_date: newDate }).eq("id", card.id);
+      if (error) { alert(error.message); return; }
+      location.hash = `#/jour/${newDate}`;
+    });
+  }
+
+  // Avertissement si on quitte la fiche avec des modifications non enregistrées
+  const initialSnap = ficheSnapshot();
+  ficheDirtyCheck = () => ficheSnapshot() !== initialSnap;
+}
+
+function ficheSnapshot(){
+  const g = (id) => document.getElementById(id)?.value ?? "";
+  return JSON.stringify({
+    platform: g("f-platform"), format: g("f-format"), category: g("f-category"),
+    time: g("f-time"), desc: g("f-desc"), hashtags: g("f-hashtags"),
+    observation: g("f-observation"), status: g("f-status"),
+    images: ficheImages.map(i => i.url || "nouvelle:" + i.id)
+  });
+}
+
+// Redimensionne et compresse une image côté navigateur avant envoi
+// (limite la taille max à ~1600px et convertit en JPEG qualité 0.82)
+function compressImage(file, maxDim = 1600, quality = 0.82){
+  return new Promise((resolve) => {
+    if (!file.type || !file.type.startsWith("image/")) { resolve(file); return; }
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width >= height) { height = Math.round(height * (maxDim / width)); width = maxDim; }
+        else { width = Math.round(width * (maxDim / height)); height = maxDim; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob((blob) => {
+        if (!blob) { resolve(file); return; } // échec de compression -> on envoie l'original
+        resolve(new File([blob], (file.name || "photo").replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" }));
+      }, "image/jpeg", quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); resolve(file); }; // échec -> on envoie l'original
+    img.src = objectUrl;
+  });
+}
+
+async function uploadAllImages(){
+  const uid = state.session.user.id;
+  const results = [];
+  for (const img of ficheImages) {
+    if (img.file) {
+      const compressed = await compressImage(img.file);
+      const rawExt = (compressed.name.split(".").pop() || "jpg").replace(/[^a-zA-Z0-9]/g, "");
+      const ext = rawExt || "jpg";
+      const path = `${uid}/${Date.now()}_${randId()}.${ext}`;
+      const { error } = await supabaseClient.storage.from("content-images").upload(path, compressed, { upsert: true });
+      if (error) throw error;
+      const { data } = supabaseClient.storage.from("content-images").getPublicUrl(path);
+      results.push(data.publicUrl);
+    } else if (img.url) {
+      results.push(img.url);
+    }
+  }
+  return results;
+}
+
+async function saveFiche(existingCard, dateStr, createNewAfter){
+  const msg = document.getElementById("fiche-msg");
+  msg.innerHTML = "";
+  try {
+    const imageUrls = await uploadAllImages();
+    const payload = {
+      user_id: state.session.user.id,
+      card_date: dateStr,
+      platform: document.getElementById("f-platform").value,
+      format: document.getElementById("f-format").value,
+      category: document.getElementById("f-category").value,
+      post_time: document.getElementById("f-time").value || null,
+      description: document.getElementById("f-desc").value.trim(),
+      hashtags: document.getElementById("f-hashtags").value.trim(),
+      observation: document.getElementById("f-observation").value.trim(),
+      status: document.getElementById("f-status").value,
+      image_urls: imageUrls,
+      image_url: imageUrls[0] || null
+    };
+
+    if (existingCard) {
+      const { error } = await supabaseClient.from("content_cards").update(payload).eq("id", existingCard.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabaseClient.from("content_cards").insert(payload);
+      if (error) throw error;
+    }
+
+    const removedUrls = originalImageUrls.filter(u => !imageUrls.includes(u));
+    await deleteStorageImages(removedUrls);
+
+    ficheDirtyCheck = null; // enregistré : plus rien à avertir en quittant
+
+    if (createNewAfter) {
+      location.hash = `#/fiche/nouvelle/${dateStr}`;
+      route(); // hash may be identical to previous "new" route, force refresh
+    } else {
+      location.hash = `#/jour/${dateStr}`;
+    }
+  } catch (err) {
+    msg.innerHTML = `<div class="error-msg">${h(err.message || String(err))}</div>`;
+  }
+}
+
+/* ---------------- LISTE "À FAIRE" ---------------- */
+async function renderTodoList(){
+  app.innerHTML = topbarHTML() + `
+    <div class="page-title-row">
+      <button class="back-btn" onclick="location.hash='#/'">‹</button>
+      <h2>À faire</h2>
+    </div>
+    <div id="todo-wrap" class="center"><div class="spinner"></div></div>
+  `;
+  const { data, error } = await supabaseClient
+    .from("content_cards")
+    .select("*")
+    .eq("status", "a_faire")
+    .is("deleted_at", null)
+    .order("card_date", { ascending: true });
+
+  const wrap = document.getElementById("todo-wrap");
+  if (error) { wrap.innerHTML = `<div class="error-msg">${h(error.message)}</div>`; return; }
+  if (!data || !data.length) { wrap.innerHTML = `<div class="empty-state">Rien à faire pour le moment 🎉</div>`; return; }
+  wrap.innerHTML = data.map(c => `
+    <div class="fiche-item" onclick="location.hash='#/fiche/${c.id}'">
+      ${c.image_url ? `<img class="thumb" src="${h(c.image_url)}">` : `<div class="thumb"></div>`}
+      <div class="info">
+        <div class="l1"><i class="${PLATFORM_ICON[c.platform] || PLATFORM_ICON["Autre"]}"></i> ${h(formatFrDate(c.card_date))}</div>
+        <div class="l2">${h(c.platform)} · ${h(c.format)} — ${h(c.description || "Sans description")}</div>
+      </div>
+      <span class="status-pill a_faire">À faire</span>
+    </div>
+  `).join("");
+}
+
+/* ---------------- CORBEILLE ---------------- */
+async function renderTrash(){
+  app.innerHTML = topbarHTML() + `
+    <div class="page-title-row">
+      <button class="back-btn" onclick="location.hash='#/'">‹</button>
+      <h2>Corbeille</h2>
+    </div>
+    <div class="card-box" style="margin-bottom:14px;font-size:13px;color:var(--muted);">
+      Les fiches ici sont supprimées définitivement automatiquement chaque lundi à 00h01. Vous pouvez les restaurer avant.
+    </div>
+    <div id="trash-wrap" class="center"><div class="spinner"></div></div>
+  `;
+  const { data, error } = await supabaseClient
+    .from("content_cards")
+    .select("*")
+    .not("deleted_at", "is", null)
+    .order("deleted_at", { ascending: false });
+
+  const wrap = document.getElementById("trash-wrap");
+  if (error) { wrap.innerHTML = `<div class="error-msg">${h(error.message)}</div>`; return; }
+  if (!data || !data.length) { wrap.innerHTML = `<div class="empty-state">La corbeille est vide.</div>`; return; }
+  wrap.innerHTML = data.map(c => `
+    <div class="fiche-item" style="cursor:default;">
+      ${c.image_url ? `<img class="thumb" src="${h(c.image_url)}">` : `<div class="thumb"></div>`}
+      <div class="info">
+        <div class="l1">${h(formatFrDate(c.card_date))}</div>
+        <div class="l2">${h(c.platform)} · ${h(c.format)}</div>
+      </div>
+      <button type="button" class="btn outline" style="padding:6px 12px;flex:none;" data-restore="${c.id}">Restaurer</button>
+      <button type="button" class="btn danger" style="padding:6px 12px;flex:none;" data-purge="${c.id}">Supprimer</button>
+    </div>
+  `).join("");
+
+  wrap.querySelectorAll("[data-restore]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const { error } = await supabaseClient.from("content_cards").update({ deleted_at: null }).eq("id", btn.dataset.restore);
+      if (error) { alert(error.message); return; }
+      renderTrash();
+    });
+  });
+  wrap.querySelectorAll("[data-purge]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Supprimer définitivement cette fiche et ses photos ? Impossible à annuler.")) return;
+      const id = btn.dataset.purge;
+      const found = data.find(c => c.id === id);
+      const { error } = await supabaseClient.from("content_cards").delete().eq("id", id);
+      if (error) { alert(error.message); return; }
+      if (found) await deleteStorageImages(cardImageUrls(found));
+      renderTrash();
+    });
+  });
+}
+
+/* ---------------- ADMIN OVERVIEW (fondatrices uniquement) ---------------- */
+function formatBytes(bytes){
+  bytes = Number(bytes) || 0;
+  if (bytes < 1024) return bytes + " o";
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + " Ko";
+  if (bytes < 1024*1024*1024) return (bytes/(1024*1024)).toFixed(1) + " Mo";
+  return (bytes/(1024*1024*1024)).toFixed(2) + " Go";
+}
+
+async function renderAdmin(){
+  if (!state.profile?.is_admin) { location.hash = "#/"; return route(); }
+  app.innerHTML = topbarHTML() + `
+    <div class="page-title-row">
+      <button class="back-btn" onclick="location.hash='#/'">‹</button>
+      <h2>Vue d'ensemble</h2>
+    </div>
+    <div id="admin-wrap" class="center"><div class="spinner"></div></div>
+  `;
+  const wrap = document.getElementById("admin-wrap");
+  const { data, error } = await supabaseClient.rpc("admin_list_users");
+  if (error) {
+    wrap.innerHTML = `<div class="error-msg">${h(error.message)}</div>`;
+    return;
+  }
+  if (!data || !data.length) {
+    wrap.innerHTML = `<div class="empty-state">Aucun utilisateur.</div>`;
+    return;
+  }
+  const totalBytes = data.reduce((sum, u) => sum + Number(u.storage_bytes || 0), 0);
+  wrap.innerHTML = `
+    <div class="card-box" style="margin-bottom:14px;">
+      <strong>${data.length}</strong> compte(s) au total · espace utilisé au total : <strong>${formatBytes(totalBytes)}</strong>
+    </div>
+    ${data.map(u => `
+      <div class="fiche-item" style="cursor:default;">
+        ${u.avatar_url
+          ? `<img class="thumb" style="border-radius:50%;" src="${h(u.avatar_url)}">`
+          : `<div class="thumb" style="border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--green-dark);background:var(--gold-light);">${h((u.full_name || u.email || "?").trim().charAt(0).toUpperCase())}</div>`}
+        <div class="info">
+          <div class="l1">${h(u.full_name || "Sans nom")}</div>
+          <div class="l2">${h(u.email)}</div>
+        </div>
+        <span class="status-pill" style="background:var(--beige);color:var(--green-dark);">${formatBytes(u.storage_bytes || 0)}</span>
+      </div>
+    `).join("")}
+  `;
+}
+
+/* ---------------- PROFILE ---------------- */
+function renderProfile(){
+  const name = state.profile?.full_name || "";
+  const avatar = state.profile?.avatar_url;
+  const initial = (name || state.session.user.email).trim().charAt(0).toUpperCase();
+  app.innerHTML = topbarHTML() + `
+    <div class="page-title-row">
+      <button class="back-btn" onclick="location.hash='#/'">‹</button>
+      <h2>Mon profil</h2>
+    </div>
+    <div class="card-box">
+      <div id="profile-msg"></div>
+      ${avatar
+        ? `<img class="profile-avatar-big" src="${h(avatar)}">`
+        : `<div class="profile-avatar-big">${h(initial)}</div>`}
+      <div style="display:flex;gap:8px;margin-bottom:18px;">
+        <label class="file-btn center" style="margin-bottom:0;">🖼 Galerie
+          <input type="file" id="p-avatar" accept="image/*" style="display:none;">
+        </label>
+        <label class="file-btn center" style="margin-bottom:0;">📷 Prendre une photo
+          <input type="file" id="p-avatar-camera" accept="image/*" capture="user" style="display:none;">
+        </label>
+      </div>
+
+      <div class="field">
+        <label>Nom affiché</label>
+        <input type="text" id="p-name" value="${h(name)}">
+      </div>
+      <button class="btn gold" id="save-name-btn" style="width:100%;margin-bottom:24px;">Enregistrer le nom</button>
+
+      <hr style="border:none;border-top:1px solid #eee3c8;margin:18px 0;">
+
+      <h3 style="color:var(--green-dark);font-size:15px;margin:0 0 12px;">Vos réseaux sociaux</h3>
+      <p style="color:var(--muted);font-size:13px;margin:0 0 14px;">Collez le lien de votre profil sur chaque réseau — un bouton apparaîtra sur vos fiches de contenu pour y accéder en un clic.</p>
+      ${SOCIAL_LINK_PLATFORMS.map(p => `
+        <div class="field">
+          <label><i class="${PLATFORM_ICON[p]}"></i> ${p}</label>
+          <input type="text" id="p-social-${p}" placeholder="https://..." value="${h((state.profile?.social_links || {})[p] || "")}">
+        </div>
+      `).join("")}
+      <button class="btn gold" id="save-social-btn" style="width:100%;margin-bottom:24px;">Enregistrer mes réseaux</button>
+
+      <hr style="border:none;border-top:1px solid #eee3c8;margin:18px 0;">
+
+      <div class="field">
+        <label>E-mail</label>
+        <input type="text" value="${h(state.session.user.email)}" disabled>
+      </div>
+      <div class="field">
+        <label>Nouveau mot de passe</label>
+        <div class="password-wrap">
+          <input type="password" id="p-newpass" minlength="6" autocomplete="new-password">
+          <button type="button" class="password-toggle" data-target="p-newpass">Afficher</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Confirmer le nouveau mot de passe</label>
+        <div class="password-wrap">
+          <input type="password" id="p-newpass2" minlength="6" autocomplete="new-password">
+          <button type="button" class="password-toggle" data-target="p-newpass2">Afficher</button>
+        </div>
+      </div>
+      <button class="btn outline" id="save-pass-btn" style="width:100%;margin-bottom:24px;">Changer le mot de passe</button>
+
+      <button class="btn outline" id="tutorial-btn" style="width:100%;margin-bottom:12px;">💡 Revoir le tutoriel</button>
+      <button class="btn danger" id="logout-btn" style="width:100%;">Se déconnecter</button>
+    </div>
+  `;
+  wirePasswordToggles();
+  document.getElementById("tutorial-btn").addEventListener("click", showTutorial);
+
+  async function handleAvatarFile(file){
+    if (!file) return;
+    const msg = document.getElementById("profile-msg");
+    try {
+      const uid = state.session.user.id;
+      const compressed = await compressImage(file, 500, 0.85); // avatar : plus petit suffit
+      const ext = (compressed.name.split(".").pop() || "jpg");
+      const path = `${uid}/avatar.${ext}`;
+      const { error: upErr } = await supabaseClient.storage.from("avatars").upload(path, compressed, { upsert: true });
+      if (upErr) throw upErr;
+      const { data } = supabaseClient.storage.from("avatars").getPublicUrl(path);
+      const { error } = await supabaseClient.from("profiles").update({ avatar_url: data.publicUrl }).eq("id", uid);
+      if (error) throw error;
+      state.profile.avatar_url = data.publicUrl;
+      renderProfile();
+    } catch (err) {
+      msg.innerHTML = `<div class="error-msg">${h(err.message)}</div>`;
+    }
+  }
+  document.getElementById("p-avatar").addEventListener("change", (e) => handleAvatarFile(e.target.files[0]));
+  document.getElementById("p-avatar-camera").addEventListener("change", (e) => handleAvatarFile(e.target.files[0]));
+
+  document.getElementById("save-name-btn").addEventListener("click", async () => {
+    const msg = document.getElementById("profile-msg");
+    const newName = document.getElementById("p-name").value.trim();
+    const { error } = await supabaseClient.from("profiles").update({ full_name: newName }).eq("id", state.session.user.id);
+    if (error) { msg.innerHTML = `<div class="error-msg">${h(error.message)}</div>`; return; }
+    state.profile.full_name = newName;
+    msg.innerHTML = `<div class="ok-msg">Nom mis à jour.</div>`;
+  });
+
+  document.getElementById("save-social-btn").addEventListener("click", async () => {
+    const msg = document.getElementById("profile-msg");
+    const links = {};
+    SOCIAL_LINK_PLATFORMS.forEach(p => {
+      const val = document.getElementById(`p-social-${p}`).value.trim();
+      if (val) links[p] = val;
+    });
+    const { error } = await supabaseClient.from("profiles").update({ social_links: links }).eq("id", state.session.user.id);
+    if (error) { msg.innerHTML = `<div class="error-msg">${h(error.message)}</div>`; return; }
+    state.profile.social_links = links;
+    msg.innerHTML = `<div class="ok-msg">Réseaux sociaux mis à jour.</div>`;
+  });
+
+  document.getElementById("save-pass-btn").addEventListener("click", async () => {
+    const msg = document.getElementById("profile-msg");
+    const pass = document.getElementById("p-newpass").value;
+    const pass2 = document.getElementById("p-newpass2").value;
+    if (!pass || pass.length < 6) {
+      msg.innerHTML = `<div class="error-msg">Le mot de passe doit contenir au moins 6 caractères.</div>`;
+      return;
+    }
+    if (pass !== pass2) {
+      msg.innerHTML = `<div class="error-msg">Les mots de passe ne correspondent pas.</div>`;
+      return;
+    }
+    const { error } = await supabaseClient.auth.updateUser({ password: pass });
+    if (error) { msg.innerHTML = `<div class="error-msg">${h(error.message)}</div>`; return; }
+    msg.innerHTML = `<div class="ok-msg">Mot de passe mis à jour.</div>`;
+    document.getElementById("p-newpass").value = "";
+    document.getElementById("p-newpass2").value = "";
+  });
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    state.session = null;
+    state.profile = null;
+    location.hash = "#/";
+    route();
+  });
+}
+</script>
+</body>
+</html>
