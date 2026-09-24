@@ -1246,7 +1246,7 @@ async function loadClientsTab(status){
   wrap.querySelectorAll("[data-trash]").forEach(btn => {
     btn.addEventListener("click", async () => {
       const id = btn.dataset.trash;
-      if (!confirm("Mettre ce client à la corbeille ? Suppression définitive automatique dans 14 jours.")) return;
+      if (!confirm("Mettre ce client à la corbeille ? Vous pourrez le supprimer définitivement vous-même après 14 jours (rien n'est supprimé automatiquement).")) return;
       const { error } = await supabaseClient.from("clients").update({ status: "corbeille", trashed_at: new Date().toISOString() }).eq("id", id);
       if (error) { alert(error.message); return; }
       if (state.currentClientId === id) switchClientLocalReset();
