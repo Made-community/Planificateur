@@ -271,7 +271,9 @@ let state = {
   viewMonth: new Date().getMonth(),
   viewYear: new Date().getFullYear(),
   monthCards: [],       // cards for the visible month
-  turnstileWidgetId: null
+  turnstileWidgetId: null,
+  currentClientId: null, // null = calendrier personnel ; sinon = calendrier du "Client" (mode Community Manager) sélectionné
+  currentClientName: null
 };
 
 const app = document.getElementById("app");
@@ -340,6 +342,7 @@ async function route(){
   if (hash === "#/admin") return renderAdmin();
   if (hash === "#/a-faire") return renderTodoList();
   if (hash === "#/corbeille") return renderTrash();
+  if (hash === "#/clients") return renderClients();
   renderHome();
 }
 
@@ -353,6 +356,21 @@ async function loadProfile(){
     data = created;
   }
   state.profile = data;
+  if (data.is_cm) {
+    try {
+      const saved = localStorage.getItem(`made_current_client_${uid}`);
+      if (saved) {
+        const { data: cl } = await supabaseClient.from("clients").select("id,name,status").eq("id", saved).maybeSingle();
+        if (cl && cl.status === "actif") {
+          state.currentClientId = cl.id;
+          state.currentClientName = cl.name;
+        } else {
+          state.currentClientId = null;
+          state.currentClientName = null;
+        }
+      }
+    } catch(e) { /* localStorage indisponible */ }
+  }
 }
 
 /* ---------------- TURNSTILE (captcha) ---------------- */
@@ -546,7 +564,8 @@ function topbarHTML(){
         <img src="${LOGO_DATA_URI}" alt="MADE">
         <span>MADE planificateur</span>
       </a>
-      <div style="display:flex;align-items:center;gap:10px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        ${state.profile?.is_cm ? `<button class="btn outline" style="padding:8px 14px;" onclick="location.hash='#/clients'">🗂 ${state.currentClientId ? h(state.currentClientName || "Client") : "Mon calendrier"}</button>` : ""}
         ${state.profile?.is_admin ? `<button class="btn outline" style="padding:8px 14px;" onclick="location.hash='#/admin'">Vue d'ensemble</button>` : ""}
         <button class="profile-chip" onclick="location.hash='#/profil'">
           <span>${h(name)}</span>
@@ -560,17 +579,27 @@ function topbarHTML(){
 }
 
 /* ---------------- HOME: monthly calendar ---------------- */
+// Filtre une requête sur content_cards pour ne renvoyer que celles du calendrier actif
+// (calendrier personnel si aucun Client n'est sélectionné, sinon celui du Client en cours)
+function scopeToCurrentCalendar(query){
+  return state.currentClientId
+    ? query.eq("client_id", state.currentClientId)
+    : query.is("client_id", null);
+}
+
 async function loadMonthCards(){
   const y = state.viewYear, m = state.viewMonth;
   const from = fmtDate(y, m, 1);
   const lastDay = new Date(y, m+1, 0).getDate();
   const to = fmtDate(y, m, lastDay);
-  const { data, error } = await supabaseClient
+  let query = supabaseClient
     .from("content_cards")
     .select("id, card_date, status, platform, image_url, post_time")
     .is("deleted_at", null)
     .gte("card_date", from)
     .lte("card_date", to);
+  query = scopeToCurrentCalendar(query);
+  const { data, error } = await query;
   state.monthCards = error ? [] : (data || []);
 }
 
@@ -719,12 +748,14 @@ async function renderDay(dateStr){
     <div id="day-list" class="center"><div class="spinner"></div></div>
     <button class="btn gold" style="width:100%;margin-top:6px;" onclick="location.hash='#/fiche/nouvelle/${dateStr}'">+ Créer une nouvelle fiche</button>
   `;
-  const { data, error } = await supabaseClient
+  let query = supabaseClient
     .from("content_cards")
     .select("*")
     .eq("card_date", dateStr)
     .is("deleted_at", null)
     .order("post_time", { ascending: true });
+  query = scopeToCurrentCalendar(query);
+  const { data, error } = await query;
 
   const list = document.getElementById("day-list");
   if (error) { list.innerHTML = `<div class="error-msg">${h(error.message)}</div>`; return; }
@@ -959,6 +990,7 @@ async function renderFiche(cardId, dateForNew){
       ficheDirtyCheck = null;
       const dupPayload = {
         user_id: state.session.user.id,
+        client_id: state.currentClientId,
         card_date: card.card_date,
         platform: card.platform,
         format: card.format,
@@ -1056,6 +1088,7 @@ async function saveFiche(existingCard, dateStr, createNewAfter){
     const imageUrls = await uploadAllImages();
     const payload = {
       user_id: state.session.user.id,
+      client_id: state.currentClientId,
       card_date: dateStr,
       platform: document.getElementById("f-platform").value,
       format: document.getElementById("f-format").value,
@@ -1093,6 +1126,165 @@ async function saveFiche(existingCard, dateStr, createNewAfter){
   }
 }
 
+/* ---------------- CLIENTS (mode Community Manager) ---------------- */
+function switchClient(clientId, clientName){
+  state.currentClientId = clientId;
+  state.currentClientName = clientName || null;
+  try {
+    const uid = state.session.user.id;
+    if (clientId) localStorage.setItem(`made_current_client_${uid}`, clientId);
+    else localStorage.removeItem(`made_current_client_${uid}`);
+  } catch(e) { /* localStorage indisponible */ }
+  location.hash = "#/";
+}
+
+async function renderClients(){
+  app.innerHTML = topbarHTML() + `
+    <div class="page-title-row">
+      <button class="back-btn" onclick="location.hash='#/'">‹</button>
+      <h2>Mes Clients</h2>
+    </div>
+    <div class="card-box" style="margin-bottom:14px;">
+      <button class="btn ${!state.currentClientId ? "gold" : "outline"}" style="width:100%;" onclick="switchClient(null, null)">
+        👤 Mon calendrier personnel${!state.currentClientId ? " (actif)" : ""}
+      </button>
+    </div>
+    <div class="card-box" style="margin-bottom:14px;">
+      <div class="field" style="margin-bottom:10px;">
+        <label>Nouveau client</label>
+        <input type="text" id="new-client-name" placeholder="Nom du client">
+      </div>
+      <button class="btn gold" id="create-client-btn" style="width:100%;">+ Créer ce client</button>
+    </div>
+    <div class="toolbar-row">
+      <button class="btn gold client-tab" data-tab="actif" style="padding:8px 14px;">Actifs</button>
+      <button class="btn outline client-tab" data-tab="archive" style="padding:8px 14px;">Archivés</button>
+      <button class="btn outline client-tab" data-tab="corbeille" style="padding:8px 14px;">Corbeille</button>
+    </div>
+    <div id="clients-wrap" class="center"><div class="spinner"></div></div>
+  `;
+
+  document.getElementById("create-client-btn").addEventListener("click", async () => {
+    const nameInput = document.getElementById("new-client-name");
+    const name = nameInput.value.trim();
+    if (!name) { alert("Donnez un nom à ce client."); return; }
+    const { data: created, error } = await supabaseClient.from("clients")
+      .insert({ cm_id: state.session.user.id, name, status: "actif" })
+      .select().single();
+    if (error) { alert(error.message); return; }
+    nameInput.value = "";
+    loadClientsTab("actif");
+  });
+
+  document.querySelectorAll(".client-tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".client-tab").forEach(b => { b.classList.remove("gold"); b.classList.add("outline"); });
+      btn.classList.remove("outline");
+      btn.classList.add("gold");
+      loadClientsTab(btn.dataset.tab);
+    });
+  });
+
+  loadClientsTab("actif");
+}
+
+async function loadClientsTab(status){
+  const wrap = document.getElementById("clients-wrap");
+  wrap.innerHTML = `<div class="spinner"></div>`;
+  const { data, error } = await supabaseClient
+    .from("clients")
+    .select("*")
+    .eq("status", status)
+    .order(status === "corbeille" ? "trashed_at" : "created_at", { ascending: false });
+
+  if (error) { wrap.innerHTML = `<div class="error-msg">${h(error.message)}</div>`; return; }
+  if (!data || !data.length) {
+    const emptyMsg = status === "actif" ? "Aucun client pour l'instant." : status === "archive" ? "Aucun client archivé." : "La corbeille est vide.";
+    wrap.innerHTML = `<div class="empty-state">${emptyMsg}</div>`;
+    return;
+  }
+
+  wrap.innerHTML = data.map(c => {
+    const initial = (c.name || "?").trim().charAt(0).toUpperCase();
+    let actions = "";
+    if (status === "actif") {
+      actions = `
+        <button type="button" class="btn gold" style="padding:6px 12px;flex:none;" data-switch="${c.id}" data-name="${h(c.name)}">Basculer</button>
+        <button type="button" class="btn outline" style="padding:6px 12px;flex:none;" data-archive="${c.id}">Archiver</button>
+        <button type="button" class="btn danger" style="padding:6px 12px;flex:none;" data-trash="${c.id}">🗑</button>`;
+    } else if (status === "archive") {
+      actions = `
+        <button type="button" class="btn outline" style="padding:6px 12px;flex:none;" data-restore="${c.id}">Réactiver</button>
+        <button type="button" class="btn danger" style="padding:6px 12px;flex:none;" data-trash="${c.id}">🗑</button>`;
+    } else {
+      const daysLeft = Math.max(0, 14 - Math.floor((Date.now() - new Date(c.trashed_at).getTime()) / 86400000));
+      const canPurge = daysLeft === 0;
+      actions = `
+        <span style="font-size:11px;color:var(--muted);flex:none;">${canPurge ? "suppression possible" : daysLeft + "j avant suppression possible"}</span>
+        <button type="button" class="btn outline" style="padding:6px 12px;flex:none;" data-restore="${c.id}">Restaurer</button>
+        <button type="button" class="btn danger" style="padding:6px 12px;flex:none;" data-purge="${c.id}" ${canPurge ? "" : "disabled"}>Suppr. def.</button>`;
+    }
+    return `
+      <div class="fiche-item" style="cursor:default;">
+        <span class="avatar" style="width:40px;height:40px;font-size:16px;flex:none;">${h(initial)}</span>
+        <div class="info"><div class="l1">${h(c.name)}</div></div>
+        ${actions}
+      </div>`;
+  }).join("");
+
+  wrap.querySelectorAll("[data-switch]").forEach(btn => {
+    btn.addEventListener("click", () => switchClient(btn.dataset.switch, btn.dataset.name));
+  });
+  wrap.querySelectorAll("[data-archive]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const { error } = await supabaseClient.from("clients").update({ status: "archive" }).eq("id", btn.dataset.archive);
+      if (error) { alert(error.message); return; }
+      if (state.currentClientId === btn.dataset.archive) switchClientLocalReset();
+      loadClientsTab("actif");
+    });
+  });
+  wrap.querySelectorAll("[data-trash]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.trash;
+      if (!confirm("Mettre ce client à la corbeille ? Suppression définitive automatique dans 14 jours.")) return;
+      const { error } = await supabaseClient.from("clients").update({ status: "corbeille", trashed_at: new Date().toISOString() }).eq("id", id);
+      if (error) { alert(error.message); return; }
+      if (state.currentClientId === id) switchClientLocalReset();
+      loadClientsTab(document.querySelector(".client-tab.gold").dataset.tab);
+    });
+  });
+  wrap.querySelectorAll("[data-restore]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const { error } = await supabaseClient.from("clients").update({ status: "actif", trashed_at: null }).eq("id", btn.dataset.restore);
+      if (error) { alert(error.message); return; }
+      loadClientsTab(document.querySelector(".client-tab.gold").dataset.tab);
+    });
+  });
+  wrap.querySelectorAll("[data-purge]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Supprimer définitivement ce client et tout son calendrier ? Impossible à annuler.")) return;
+      const id = btn.dataset.purge;
+      const { data: cards } = await supabaseClient.from("content_cards").select("image_url, image_urls").eq("client_id", id);
+      const { error } = await supabaseClient.from("clients").delete().eq("id", id);
+      if (error) { alert(error.message); return; }
+      if (cards) {
+        for (const c of cards) await deleteStorageImages(cardImageUrls(c));
+      }
+      if (state.currentClientId === id) switchClientLocalReset();
+      loadClientsTab("corbeille");
+    });
+  });
+}
+
+function switchClientLocalReset(){
+  state.currentClientId = null;
+  state.currentClientName = null;
+  try {
+    const uid = state.session.user.id;
+    localStorage.removeItem(`made_current_client_${uid}`);
+  } catch(e) {}
+}
+
 /* ---------------- LISTE "À FAIRE" ---------------- */
 async function renderTodoList(){
   app.innerHTML = topbarHTML() + `
@@ -1102,12 +1294,14 @@ async function renderTodoList(){
     </div>
     <div id="todo-wrap" class="center"><div class="spinner"></div></div>
   `;
-  const { data, error } = await supabaseClient
+  let query = supabaseClient
     .from("content_cards")
     .select("*")
     .eq("status", "a_faire")
     .is("deleted_at", null)
     .order("card_date", { ascending: true });
+  query = scopeToCurrentCalendar(query);
+  const { data, error } = await query;
 
   const wrap = document.getElementById("todo-wrap");
   if (error) { wrap.innerHTML = `<div class="error-msg">${h(error.message)}</div>`; return; }
@@ -1136,11 +1330,13 @@ async function renderTrash(){
     </div>
     <div id="trash-wrap" class="center"><div class="spinner"></div></div>
   `;
-  const { data, error } = await supabaseClient
+  let query = supabaseClient
     .from("content_cards")
     .select("*")
     .not("deleted_at", "is", null)
     .order("deleted_at", { ascending: false });
+  query = scopeToCurrentCalendar(query);
+  const { data, error } = await query;
 
   const wrap = document.getElementById("trash-wrap");
   if (error) { wrap.innerHTML = `<div class="error-msg">${h(error.message)}</div>`; return; }
@@ -1363,6 +1559,7 @@ function renderProfile(){
     await supabaseClient.auth.signOut();
     state.session = null;
     state.profile = null;
+    state.currentClientId = null;
     location.hash = "#/";
     route();
   });
