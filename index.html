@@ -17,7 +17,7 @@
   };
 </script>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
@@ -1681,6 +1681,13 @@ function renderProfile(){
         <input type="text" value="${h(state.session.user.email)}" disabled>
       </div>
       <div class="field">
+        <label>Mot de passe actuel</label>
+        <div class="password-wrap">
+          <input type="password" id="p-currentpass" autocomplete="current-password">
+          <button type="button" class="password-toggle" data-target="p-currentpass">Afficher</button>
+        </div>
+      </div>
+      <div class="field">
         <label>Nouveau mot de passe</label>
         <div class="password-wrap">
           <input type="password" id="p-newpass" minlength="8" autocomplete="new-password">
@@ -1757,8 +1764,13 @@ function renderProfile(){
 
   document.getElementById("save-pass-btn").addEventListener("click", async () => {
     const msg = document.getElementById("profile-msg");
+    const current = document.getElementById("p-currentpass").value;
     const pass = document.getElementById("p-newpass").value;
     const pass2 = document.getElementById("p-newpass2").value;
+    if (!current) {
+      msg.innerHTML = `<div class="error-msg">Saisissez votre mot de passe actuel.</div>`;
+      return;
+    }
     if (!pass || pass.length < 8) {
       msg.innerHTML = `<div class="error-msg">Le mot de passe doit contenir au moins 8 caractères.</div>`;
       return;
@@ -1767,9 +1779,14 @@ function renderProfile(){
       msg.innerHTML = `<div class="error-msg">Les mots de passe ne correspondent pas.</div>`;
       return;
     }
-    const { error } = await supabaseClient.auth.updateUser({ password: pass });
-    if (error) { msg.innerHTML = `<div class="error-msg">${h(error.message)}</div>`; return; }
+    const { error } = await supabaseClient.auth.updateUser({ password: pass, current_password: current });
+    if (error) {
+      const wrongCurrent = /current.?password|invalid.*(credential|password)/i.test(`${error.code || ""} ${error.message || ""}`);
+      msg.innerHTML = `<div class="error-msg">${h(wrongCurrent ? "Le mot de passe actuel est incorrect." : friendlyError(error.message))}</div>`;
+      return;
+    }
     msg.innerHTML = `<div class="ok-msg">Mot de passe mis à jour.</div>`;
+    document.getElementById("p-currentpass").value = "";
     document.getElementById("p-newpass").value = "";
     document.getElementById("p-newpass2").value = "";
   });
