@@ -181,6 +181,15 @@
     position:absolute;top:2px;right:2px;background:rgba(35,46,21,.75);color:#fff;
     font-size:9px;font-weight:700;border-radius:999px;padding:1px 5px;z-index:2;
   }
+  [data-drag-card],[data-drag-multi]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
+  [data-drag-card] img,[data-drag-multi] img{-webkit-user-drag:none;}
+  .dnd-source{opacity:.35;}
+  .dnd-ghost{position:fixed;z-index:2000;pointer-events:none;opacity:.92;margin:0;transform:scale(1.06);box-shadow:0 8px 22px rgba(0,0,0,.4);}
+  .drop-hover{outline:3px dashed var(--gold);outline-offset:2px;}
+  .toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);background:var(--green-dark);color:#fff;
+    padding:12px 16px;border-radius:12px;font-size:14px;z-index:3000;box-shadow:0 4px 14px rgba(0,0,0,.35);
+    display:flex;gap:14px;align-items:center;max-width:92vw;}
+  .toast button{background:none;border:none;color:var(--gold);font-weight:800;font-size:14px;cursor:pointer;padding:0;}
   .toolbar-row{display:flex;gap:6px;flex-wrap:nowrap;margin-bottom:14px;}
   .toolbar-row .btn{flex:1 1 auto;min-width:0;padding:8px 6px !important;font-size:13.5px;white-space:nowrap;}
   .legend-note{font-size:12px;color:var(--muted);margin:-6px 0 14px;line-height:1.5;}
@@ -806,7 +815,7 @@ async function renderHome(){
       const badgeColor = DOT_COLOR[rep.status];
       const otherStatuses = STATUS_ORDER.filter(s => s !== rep.status && cards.some(c => c.status === s));
       cells += `
-        <div class="cal-day has-thumb ${isToday ? "today":""}" style="border:2.5px solid ${badgeColor};" onclick="location.hash='#/jour/${dateStr}'">
+        <div class="cal-day has-thumb ${isToday ? "today":""}" style="border:2.5px solid ${badgeColor};" data-drop-date="${dateStr}" ${cards.length === 1 ? `data-drag-card="${h(rep.id)}" data-drag-date="${dateStr}"` : `data-drag-multi="1"`} onclick="location.hash='#/jour/${dateStr}'">
           ${rep.image_url ? `<img class="thumb-bg" src="${h(rep.image_url)}">` : `<div class="thumb-bg thumb-bg-empty"></div>`}
           <span class="num">${d}</span>
           ${cards.length > 1 ? `<span class="count-badge">${cards.length}</span>` : ""}
@@ -815,7 +824,7 @@ async function renderHome(){
         </div>`;
     } else {
       cells += `
-        <div class="cal-day ${isToday ? "today":""}" onclick="location.hash='#/jour/${dateStr}'">
+        <div class="cal-day ${isToday ? "today":""}" data-drop-date="${dateStr}" onclick="location.hash='#/jour/${dateStr}'">
           <span class="num">${d}</span>
         </div>`;
     }
@@ -869,6 +878,120 @@ async function loadUpcoming(todayStr){
   box2.innerHTML = `<h3>Prochaines publications</h3>` + (rows || `<div class="up-none">Rien de prévu pour l'instant.</div>`);
 }
 
+/* ---------------- GLISSER-DÉPOSER (souris et tactile) ---------------- */
+function notify(msg, action){
+  const old = document.getElementById("toast"); if (old) old.remove();
+  const t = document.createElement("div");
+  t.className = "toast"; t.id = "toast";
+  const sp = document.createElement("span"); sp.textContent = msg; t.appendChild(sp);
+  if (action) {
+    const b = document.createElement("button"); b.textContent = action.label;
+    b.addEventListener("click", () => { t.remove(); action.fn(); });
+    t.appendChild(b);
+  }
+  document.body.appendChild(t);
+  setTimeout(() => { if (t.parentNode) t.remove(); }, action ? 8000 : 4500);
+}
+
+async function moveCardToDate(id, oldDate, newDate, silent){
+  if (!UUID_RE.test(id) || !isValidDateStr(newDate) || oldDate === newDate) return;
+  const { error } = await supabaseClient.from("content_cards").update({ card_date: newDate }).eq("id", id);
+  if (error) { notify("Impossible de déplacer la fiche : " + error.message); return; }
+  await renderHome();
+  notify(silent ? "Déplacement annulé" : "Fiche déplacée au " + formatFrDate(newDate),
+    silent ? null : { label: "Annuler", fn: () => moveCardToDate(id, newDate, oldDate, true) });
+}
+
+let dnd = null;
+let dndSuppressClickUntil = 0;
+
+function dndStart(){
+  if (!dnd || dnd.active) return;
+  clearTimeout(dnd.timer);
+  if (dnd.el.hasAttribute("data-drag-multi")) {
+    notify("Plusieurs fiches ce jour-là : ouvrez la vue Semaine pour les déplacer une par une.");
+    dndSuppressClickUntil = Date.now() + 500;
+    dnd = null; return;
+  }
+  dnd.active = true;
+  const r = dnd.el.getBoundingClientRect();
+  dnd.offX = dnd.x - r.left; dnd.offY = dnd.y - r.top;
+  const g = dnd.el.cloneNode(true);
+  g.removeAttribute("onclick");
+  g.classList.add("dnd-ghost");
+  g.style.width = r.width + "px"; g.style.height = r.height + "px";
+  document.body.appendChild(g);
+  dnd.ghost = g;
+  dnd.el.classList.add("dnd-source");
+  try { navigator.vibrate && navigator.vibrate(20); } catch(e) {}
+  dndTick();
+}
+
+function dndTick(){
+  if (!dnd || !dnd.active) return;
+  const y = dnd.y, vh = window.innerHeight;
+  if (y < 90) window.scrollBy(0, -14);
+  else if (y > vh - 90) window.scrollBy(0, 14);
+  dnd.raf = requestAnimationFrame(dndTick);
+}
+
+function dndMoveGhost(){
+  dnd.ghost.style.left = (dnd.x - dnd.offX) + "px";
+  dnd.ghost.style.top = (dnd.y - dnd.offY) + "px";
+  const under = document.elementFromPoint(dnd.x, dnd.y);
+  const target = under && under.closest ? under.closest("[data-drop-date]") : null;
+  if (target !== dnd.over) {
+    if (dnd.over) dnd.over.classList.remove("drop-hover");
+    if (target) target.classList.add("drop-hover");
+    dnd.over = target;
+  }
+}
+
+function dndEnd(drop){
+  if (!dnd) return;
+  clearTimeout(dnd.timer);
+  const d = dnd; dnd = null;
+  if (!d.active) return;
+  cancelAnimationFrame(d.raf);
+  dndSuppressClickUntil = Date.now() + 500;
+  if (d.ghost) d.ghost.remove();
+  d.el.classList.remove("dnd-source");
+  if (d.over) d.over.classList.remove("drop-hover");
+  if (drop && d.over) {
+    moveCardToDate(d.el.getAttribute("data-drag-card"), d.el.getAttribute("data-drag-date"), d.over.getAttribute("data-drop-date"));
+  }
+}
+
+document.addEventListener("pointerdown", (e) => {
+  if (dnd) return;
+  if (e.pointerType === "mouse" && e.button !== 0) return;
+  const el = e.target.closest && e.target.closest("[data-drag-card],[data-drag-multi]");
+  if (!el) return;
+  dnd = { el, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, active: false, over: null, ghost: null, raf: 0,
+          touch: e.pointerType !== "mouse" };
+  if (dnd.touch) dnd.timer = setTimeout(dndStart, 400); // appui long
+});
+document.addEventListener("pointermove", (e) => {
+  if (!dnd) return;
+  dnd.x = e.clientX; dnd.y = e.clientY;
+  if (!dnd.active) {
+    const moved = Math.hypot(dnd.x - dnd.x0, dnd.y - dnd.y0);
+    if (dnd.touch) { if (moved > 10) { clearTimeout(dnd.timer); dnd = null; } } // l'utilisateur fait défiler la page
+    else if (moved > 6) dndStart();
+    if (!dnd || !dnd.active) return;
+  }
+  dndMoveGhost();
+});
+document.addEventListener("pointerup", () => { if (dnd) { dnd.active ? dndEnd(true) : (clearTimeout(dnd.timer), dnd = null); } });
+document.addEventListener("pointercancel", () => { if (dnd) { dnd.active ? dndEnd(false) : (clearTimeout(dnd.timer), dnd = null); } });
+document.addEventListener("touchmove", (e) => { if (dnd && dnd.active) e.preventDefault(); }, { passive: false });
+document.addEventListener("contextmenu", (e) => {
+  if (dnd || (e.target.closest && e.target.closest("[data-drag-card],[data-drag-multi]"))) e.preventDefault();
+});
+document.addEventListener("click", (e) => {
+  if (Date.now() < dndSuppressClickUntil) { e.stopPropagation(); e.preventDefault(); }
+}, true);
+
 function tutorialHTML(){
   return `
     <div class="tutorial-box">
@@ -880,6 +1003,7 @@ function tutorialHTML(){
         <li>Les boutons <strong>Mois / Quinzaine / Semaine</strong> changent la vue : en semaine et quinzaine, les photos s'affichent en plus grand.</li>
         <li>En haut du calendrier : <strong>Aujourd'hui</strong> pour revenir au mois en cours, <strong>À faire</strong> pour voir toutes les fiches en attente, <strong>Corbeille</strong> pour restaurer une fiche supprimée par erreur.</li>
         <li>Dans une fiche : plusieurs photos possibles, glissez pour les faire défiler, remplacez-les individuellement, et le bouton à côté de la plateforme ouvre directement votre page sur ce réseau.</li>
+        <li><strong>Glisser-déposer</strong> : maintenez le doigt sur une fiche puis glissez-la sur un autre jour pour la déplacer (un message permet d'annuler).</li>
         <li>Chaque fiche peut être <strong>dupliquée</strong>, <strong>déplacée</strong> à une autre date, ou mise à la <strong>corbeille</strong> (récupérable une semaine).</li>
         <li>Votre nom/photo en haut à droite ouvrent votre profil : photo (galerie ou appareil photo), liens de vos réseaux sociaux, mot de passe, déconnexion.</li>
       </ul>
@@ -952,7 +1076,7 @@ function homeToolbarHTML(){
       <span><span class="dot" style="background:var(--yellow)"></span> Programmé</span>
       <span><span class="dot" style="background:var(--vert-ok)"></span> Posté</span>
     </div>
-    <div class="legend-note">Le chiffre sur une case = nombre de fiches ce jour-là. Les petits points = autres statuts présents le même jour.</div>`;
+    <div class="legend-note">Le chiffre sur une case = nombre de fiches ce jour-là. Les petits points = autres statuts présents le même jour.<br>💡 Pour déplacer une fiche : maintenez le doigt dessus, puis glissez-la sur un autre jour.</div>`;
 }
 
 function setViewMode(mode){
@@ -981,7 +1105,7 @@ function rangeCardHTML(c){
   const color = DOT_COLOR[c.status];
   const imgs = cardImageUrls(c);
   return `
-    <div class="rg-card" onclick="location.hash='#/fiche/${c.id}'">
+    <div class="rg-card" data-drag-card="${h(c.id)}" data-drag-date="${h(c.card_date)}" onclick="location.hash='#/fiche/${c.id}'">
       <div class="rg-thumb" style="border-color:${color};">
         ${imgs[0]
           ? `<img src="${h(imgs[0])}" loading="lazy" alt="">`
@@ -1028,7 +1152,7 @@ async function renderRangeView(){
     const ds = dateStrOf(d);
     const cards = byDay[ds] || [];
     blocks += `
-      <section class="rg-day">
+      <section class="rg-day" data-drop-date="${ds}">
         <div class="rg-day-head">
           <span class="rg-day-title" onclick="location.hash='#/jour/${ds}'">
             ${DOW_LONG[d.getDay()]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}
