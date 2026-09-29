@@ -1047,6 +1047,33 @@ async function deleteStorageImages(urls){
   catch (e) { /* best-effort : on ne bloque pas l'action principale si le nettoyage échoue */ }
 }
 
+// Nombre de fiches (vivantes OU en corbeille, les vôtres uniquement) qui utilisent encore cette photo.
+// Une fiche dupliquée partage les mêmes fichiers que l'originale : on ne doit donc jamais
+// supprimer un fichier tant qu'une autre fiche s'en sert.
+async function countCardsUsingImage(url){
+  const base = () => supabaseClient.from("content_cards").select("id", { count: "exact", head: true });
+  const a = await base().eq("image_url", url);
+  if (a.error) throw a.error;
+  let b = await base().contains("image_urls", [url]);                    // colonne de type tableau (text[])
+  if (b.error) b = await base().contains("image_urls", JSON.stringify([url])); // colonne de type json(b)
+  if (b.error) throw b.error;
+  return (a.count || 0) + (b.count || 0);
+}
+
+// À appeler APRÈS avoir supprimé / modifié les fiches concernées.
+// Supprime du Storage uniquement les photos que plus aucune fiche n'utilise.
+// En cas de doute (erreur de vérification), la photo est conservée.
+async function deleteStorageImagesIfUnused(urls){
+  const candidates = [...new Set((urls || []).filter(Boolean))]
+    .filter(u => storagePathFromPublicUrl(u, "content-images"));
+  const unused = [];
+  for (const url of candidates) {
+    try { if ((await countCardsUsingImage(url)) === 0) unused.push(url); }
+    catch (e) { /* on garde le fichier dans le doute */ }
+  }
+  await deleteStorageImages(unused);
+}
+
 function cardImageUrls(card){
   if (!card) return [];
   if (Array.isArray(card.image_urls) && card.image_urls.length) return card.image_urls;
@@ -1360,7 +1387,7 @@ async function saveFiche(existingCard, dateStr, createNewAfter){
     }
 
     const removedUrls = originalImageUrls.filter(u => !imageUrls.includes(u));
-    await deleteStorageImages(removedUrls);
+    await deleteStorageImagesIfUnused(removedUrls);
 
     ficheDirtyCheck = null; // enregistré : plus rien à avertir en quittant
 
@@ -1517,7 +1544,7 @@ async function loadClientsTab(status){
       const { error } = await supabaseClient.from("clients").delete().eq("id", id);
       if (error) { alert(error.message); return; }
       if (cards) {
-        for (const c of cards) await deleteStorageImages(cardImageUrls(c));
+        await deleteStorageImagesIfUnused(cards.flatMap(c => cardImageUrls(c)));
       }
       if (state.currentClientId === id) switchClientLocalReset();
       loadClientsTab("corbeille");
@@ -1616,7 +1643,7 @@ async function renderTrash(){
       const found = data.find(c => c.id === id);
       const { error } = await supabaseClient.from("content_cards").delete().eq("id", id);
       if (error) { alert(error.message); return; }
-      if (found) await deleteStorageImages(cardImageUrls(found));
+      if (found) await deleteStorageImagesIfUnused(cardImageUrls(found));
       renderTrash();
     });
   });
