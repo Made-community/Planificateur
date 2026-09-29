@@ -93,6 +93,24 @@
   .auth-card{width:100%;max-width:400px;}
   .auth-switch{text-align:center;margin-top:14px;font-size:14px;color:var(--muted);}
   .auth-switch a{color:var(--green);font-weight:700;}
+  .auth-legal{text-align:center;margin-top:10px;font-size:12px;color:var(--muted);}
+  .auth-legal a{color:var(--muted);text-decoration:underline;}
+  .consent{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--ink);line-height:1.45;margin:0 0 16px;cursor:pointer;}
+  .consent input{flex:none;width:18px;height:18px;margin-top:1px;accent-color:var(--green);}
+  .consent a{color:var(--green);font-weight:700;text-decoration:underline;}
+  .legal{font-size:14px;line-height:1.65;}
+  .legal h3{color:var(--green-dark);font-size:15px;margin:22px 0 6px;}
+  .legal h3:first-child{margin-top:0;}
+  .legal p{margin:0 0 10px;}
+  .legal ul{margin:0 0 10px;padding-left:20px;}
+  .legal li{margin-bottom:4px;}
+  .legal a{color:var(--green);text-decoration:underline;}
+  .legal .maj{color:var(--muted);font-size:12px;margin-top:18px;}
+  .data-zone{border-top:1px solid #eee3c8;margin:18px 0;padding-top:18px;}
+  .data-zone h3{color:var(--green-dark);font-size:15px;margin:0 0 8px;}
+  .data-zone p{color:var(--muted);font-size:13px;margin:0 0 12px;line-height:1.5;}
+  .data-links{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;margin:0 0 14px;}
+  .data-links a{color:var(--green);text-decoration:underline;}
   .error-msg{background:#fbe6e0;color:#8f3821;border-radius:8px;padding:10px 12px;font-size:14px;margin-bottom:14px;}
   .pw-rules{list-style:none;margin:10px 0 0;padding:0;font-size:13px;}
   .pw-rules li{display:flex;align-items:center;gap:8px;color:var(--muted);padding:3px 0;transition:color .15s;}
@@ -382,6 +400,9 @@ async function init(){
 
 async function route(){
   const hash = location.hash || "#/";
+  // Pages légales : accessibles avec ou sans connexion
+  if (hash === "#/mentions-legales") return renderLegal("mentions");
+  if (hash === "#/confidentialite") return renderLegal("privacy");
   if (!state.session) {
     if (hash.startsWith("#/signup")) return renderSignup();
     return renderLogin();
@@ -501,6 +522,7 @@ function renderLogin(){
         </form>
       </div>
       <p class="auth-switch">Pas encore de compte ? <a href="#/signup">Créer un compte</a></p>
+      <p class="auth-legal"><a href="#/mentions-legales">Mentions légales</a> · <a href="#/confidentialite">Confidentialité</a></p>
     </div>
   `;
   mountTurnstile();
@@ -565,11 +587,16 @@ function renderSignup(){
               <button type="button" class="password-toggle" data-target="su-pass2">Afficher</button>
             </div>
           </div>
+          <label class="consent">
+            <input type="checkbox" id="su-consent" required>
+            <span>J'ai lu la <a href="#/confidentialite" target="_blank" rel="noopener">politique de confidentialité</a> et j'accepte que mes données soient traitées dans ce cadre.</span>
+          </label>
           <div id="turnstile-box"></div>
           <button class="btn gold" type="submit" style="width:100%;" id="signup-btn">Créer mon compte</button>
         </form>
       </div>
       <p class="auth-switch">Déjà un compte ? <a href="#/">Se connecter</a></p>
+      <p class="auth-legal"><a href="#/mentions-legales" target="_blank" rel="noopener">Mentions légales</a> · <a href="#/confidentialite" target="_blank" rel="noopener">Confidentialité</a></p>
     </div>
   `;
   mountTurnstile();
@@ -591,6 +618,10 @@ function renderSignup(){
       msg.innerHTML = `<div class="error-msg">Les mots de passe ne correspondent pas.</div>`;
       return;
     }
+    if (!document.getElementById("su-consent").checked) {
+      msg.innerHTML = `<div class="error-msg">Merci de cocher la case pour accepter la politique de confidentialité.</div>`;
+      return;
+    }
     const token = getTurnstileToken();
     if (isTurnstileConfigured() && !token) {
       msg.innerHTML = `<div class="error-msg">Merci de valider le captcha.</div>`;
@@ -601,7 +632,7 @@ function renderSignup(){
     const { data, error } = await supabaseClient.auth.signUp({
       email,
       password: pass,
-      options: { data: { full_name: name }, captchaToken: token || undefined }
+      options: { data: { full_name: name, privacy_accepted_at: new Date().toISOString() }, captchaToken: token || undefined }
     });
     if (error) {
       resetTurnstile(); // un jeton captcha ne sert qu'une fois : on en redemande un
@@ -1697,6 +1728,203 @@ async function renderAdmin(){
   `;
 }
 
+/* ---------------- PAGES LÉGALES (RGPD) ---------------- */
+// Informations de l'éditeur : les lignes vides sont simplement masquées sur la page.
+// À COMPLÉTER pour que les mentions légales soient conformes : capital, RCS, SIREN, directeur de la publication.
+const LEGAL = {
+  name: "MADE Community",
+  form: "SAS",
+  address: "173 rue de Courcelles, 75017 Paris",
+  email: "contact@made-community.com",
+  capital: "500 €",
+  rcs: "Paris 104 737 218",
+  siren: "104 737 218",
+  vat: "FR51104737218",
+  director: "Madame Céline ADAM",
+  dbRegion: "l'Union européenne (Irlande)",
+  updated: "29 septembre 2026"
+};
+
+function legalMentionsHTML(){
+  const L = LEGAL;
+  const row = (label, val) => val ? `<li><strong>${label} :</strong> ${h(val)}</li>` : "";
+  return `
+    <h3>Éditeur de l'application</h3>
+    <p><strong>${h(L.name)}</strong>, ${h(L.form)}</p>
+    <ul>
+      ${row("Siège social", L.address)}
+      ${row("Capital social", L.capital)}
+      ${row("RCS", L.rcs)}
+      ${row("SIREN", L.siren)}
+      ${row("TVA intracommunautaire", L.vat)}
+      ${row("Directeur / directrice de la publication", L.director)}
+      <li><strong>Contact :</strong> <a href="mailto:${h(L.email)}">${h(L.email)}</a></li>
+    </ul>
+
+    <h3>Hébergement</h3>
+    <ul>
+      <li><strong>Application web :</strong> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, États-Unis (cloudflare.com).</li>
+      <li><strong>Base de données, authentification et fichiers :</strong> Supabase, Inc. (supabase.com)${L.dbRegion ? `, données hébergées dans ${h(L.dbRegion)}` : ""}.</li>
+    </ul>
+
+    <h3>Propriété intellectuelle</h3>
+    <p>L'application MADE planificateur, son nom, son logo et son interface sont la propriété de ${h(L.name)}. Toute reproduction sans autorisation est interdite. Les contenus que vous ajoutez (textes, photos, hashtags…) restent votre propriété : vous en conservez les droits et en êtes responsable.</p>
+
+    <h3>Données personnelles</h3>
+    <p>Le traitement de vos données personnelles est décrit dans la <a href="#/confidentialite">politique de confidentialité</a>.</p>
+
+    <h3>Responsabilité</h3>
+    <p>${h(L.name)} s'efforce d'assurer la disponibilité et l'exactitude de l'application, sans pouvoir garantir l'absence d'interruption ou d'erreur. L'application sert à préparer et organiser vos publications : elle ne publie rien à votre place sur les réseaux sociaux.</p>
+
+    <p class="maj">Dernière mise à jour : ${h(L.updated)}</p>`;
+}
+
+function legalPrivacyHTML(){
+  const L = LEGAL;
+  return `
+    <h3>1. Qui est responsable de vos données ?</h3>
+    <p>${h(L.name)}, ${h(L.form)}, ${h(L.address)}. Contact pour toute question sur vos données : <a href="mailto:${h(L.email)}">${h(L.email)}</a>.</p>
+
+    <h3>2. Quelles données collectons-nous ?</h3>
+    <ul>
+      <li><strong>Votre compte :</strong> nom affiché, adresse e-mail, mot de passe (conservé sous forme chiffrée, nous ne pouvons pas le lire), date d'acceptation de cette politique.</li>
+      <li><strong>Votre profil (facultatif) :</strong> photo de profil, liens de vos pages de réseaux sociaux.</li>
+      <li><strong>Vos contenus :</strong> les fiches de publication (date, plateforme, format, catégorie, heure, description, hashtags, observations, statut), leurs photos, et, si vous êtes Community Manager, les noms de vos clients.</li>
+      <li><strong>Données techniques :</strong> journaux de connexion (dont l'adresse IP) tenus par nos hébergeurs pour la sécurité, et vérification anti-robot lors de la connexion.</li>
+    </ul>
+
+    <h3>3. Pourquoi, et sur quelle base légale ?</h3>
+    <ul>
+      <li>Vous fournir l'application (créer votre compte, enregistrer et afficher vos fiches) : <strong>exécution du service que vous demandez</strong>.</li>
+      <li>Sécuriser l'application et lutter contre les abus et les robots : <strong>intérêt légitime</strong>.</li>
+      <li>Respecter nos obligations légales, le cas échéant.</li>
+    </ul>
+    <p>Nous ne vendons pas vos données et ne les utilisons pas pour de la publicité ni pour de la mesure d'audience.</p>
+
+    <h3>4. Qui y a accès ?</h3>
+    <ul>
+      <li><strong>Vous seul·e</strong> voyez vos fiches, vos photos et vos clients : chaque compte est cloisonné.</li>
+      <li>Les administrateurs de ${h(L.name)} voient la liste des comptes (nom, e-mail, photo de profil, espace de stockage utilisé), pas le contenu de vos fiches dans l'application.</li>
+      <li><strong>Nos prestataires techniques</strong> traitent les données pour notre compte : Supabase (base de données, authentification, stockage des fichiers) et Cloudflare (hébergement de l'application, vérification anti-robot). Des bibliothèques d'affichage sont aussi chargées depuis les services jsDelivr et cdnjs (Cloudflare), ce qui leur transmet votre adresse IP comme pour tout site web.</li>
+    </ul>
+    <p>Si vous êtes Community Manager, vous ajoutez des contenus concernant vos clients : vous restez responsable de disposer des droits nécessaires sur ces contenus (par exemple sur les photos où des personnes sont identifiables).</p>
+
+    <h3>5. Transferts hors de l'Union européenne</h3>
+    <p>Certains prestataires peuvent être établis hors de l'Union européenne. Le cas échéant, les transferts sont encadrés par les garanties prévues par le RGPD (décision d'adéquation ou clauses contractuelles types).</p>
+
+    <h3>6. Combien de temps conservons-nous vos données ?</h3>
+    <ul>
+      <li>Tant que votre compte existe.</li>
+      <li>Une fiche mise à la corbeille est supprimée définitivement, photos comprises, au bout de 7 jours.</li>
+      <li>Si vous supprimez votre compte, votre profil, vos clients, vos fiches et vos photos sont supprimés immédiatement. Des sauvegardes techniques et journaux de nos hébergeurs peuvent subsister pendant une durée limitée.</li>
+    </ul>
+
+    <h3>7. Vos droits</h3>
+    <p>Vous pouvez à tout moment accéder à vos données, les rectifier, les supprimer, les récupérer dans un format lisible (portabilité), limiter leur traitement ou vous y opposer.</p>
+    <ul>
+      <li><strong>Accès et portabilité :</strong> bouton « Exporter mes données » dans votre profil.</li>
+      <li><strong>Rectification :</strong> modifiez votre nom, votre photo et vos liens dans votre profil.</li>
+      <li><strong>Effacement :</strong> bouton « Supprimer mon compte » dans votre profil.</li>
+      <li><strong>Autres demandes :</strong> écrivez à <a href="mailto:${h(L.email)}">${h(L.email)}</a> ; nous répondons dans un délai d'un mois.</li>
+    </ul>
+    <p>Si vous estimez que vos droits ne sont pas respectés, vous pouvez introduire une réclamation auprès de la CNIL (<a href="https://www.cnil.fr" target="_blank" rel="noopener">cnil.fr</a>).</p>
+
+    <h3>8. Sécurité</h3>
+    <p>Les échanges sont chiffrés (HTTPS), les mots de passe sont conservés sous forme chiffrée, l'accès aux données est limité à votre compte, et la connexion est protégée contre les robots.</p>
+
+    <h3>9. Stockage local et cookies</h3>
+    <p>L'application n'utilise ni cookie publicitaire ni outil de mesure d'audience. Elle enregistre dans votre navigateur (stockage local) uniquement ce qui est nécessaire à son fonctionnement : votre session de connexion, votre vue de calendrier préférée, le client sélectionné et le fait d'avoir vu le tutoriel. Ces informations ne demandent pas de consentement.</p>
+
+    <h3>10. Modifications</h3>
+    <p>Cette politique peut évoluer ; la date de dernière mise à jour figure ci-dessous.</p>
+    <p class="maj">Dernière mise à jour : ${h(L.updated)}</p>`;
+}
+
+function renderLegal(kind){
+  const loggedIn = !!(state.session && state.profile);
+  const head = loggedIn
+    ? topbarHTML()
+    : `<header class="topbar"><a href="#/" class="brand"><img src="${LOGO_DATA_URI}" alt="MADE"><span>MADE planificateur</span></a></header>`;
+  const isPrivacy = kind === "privacy";
+  app.innerHTML = head + `
+    <div class="page-title-row">
+      <button class="back-btn" onclick="history.length > 1 ? history.back() : (location.hash = '#/')" aria-label="Retour">‹</button>
+      <h2 style="text-transform:none;">${isPrivacy ? "Politique de confidentialité" : "Mentions légales"}</h2>
+    </div>
+    <div class="card-box legal">${isPrivacy ? legalPrivacyHTML() : legalMentionsHTML()}</div>
+    <p class="auth-legal">
+      ${isPrivacy ? `<a href="#/mentions-legales">Mentions légales</a>` : `<a href="#/confidentialite">Politique de confidentialité</a>`}
+    </p>`;
+  window.scrollTo(0, 0);
+}
+
+/* ---------- Export et suppression des données (droits RGPD) ---------- */
+async function fetchAllRows(makeQuery){
+  const rows = [];
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await makeQuery().range(from, from + PAGE - 1);
+    if (error) throw error;
+    rows.push(...(data || []));
+    if (!data || data.length < PAGE) break;
+  }
+  return rows;
+}
+
+async function exportMyData(){
+  const user = state.session.user;
+  const prof = await supabaseClient.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  if (prof.error) throw prof.error;
+  const clients = await fetchAllRows(() => supabaseClient.from("clients").select("*").order("created_at", { ascending: true }).order("id"));
+  const cards = await fetchAllRows(() => supabaseClient.from("content_cards").select("*").order("card_date", { ascending: true }).order("id"));
+  const payload = {
+    exporte_le: new Date().toISOString(),
+    compte: { id: user.id, email: user.email, cree_le: user.created_at },
+    profil: prof.data,
+    clients,
+    fiches: cards
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `made-planificateur-mes-donnees-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  return { fiches: cards.length, clients: clients.length };
+}
+
+// Supprime tous les fichiers de l'utilisateur (photos de fiches + avatar) via l'API Storage.
+async function removeUserStorageFiles(uid){
+  for (const bucket of ["content-images", "avatars"]) {
+    for (let guard = 0; guard < 500; guard++) {
+      const { data, error } = await supabaseClient.storage.from(bucket).list(uid, { limit: 100, offset: 0 });
+      if (error) throw error;
+      const files = (data || []).filter(f => f.name && f.id); // ignore d'éventuels dossiers
+      if (!files.length) break;
+      const { data: removed, error: rmErr } = await supabaseClient.storage.from(bucket).remove(files.map(f => `${uid}/${f.name}`));
+      if (rmErr) throw rmErr;
+      if (!removed || !removed.length) throw new Error("Certains fichiers n'ont pas pu être supprimés.");
+    }
+  }
+}
+
+async function deleteMyAccount(){
+  const uid = state.session.user.id;
+  await removeUserStorageFiles(uid);                       // 1) fichiers
+  const { error } = await supabaseClient.rpc("delete_my_account"); // 2) données + compte
+  if (error) throw error;
+  try { await supabaseClient.auth.signOut({ scope: "local" }); } catch(e) { /* le compte n'existe déjà plus */ }
+  try {
+    localStorage.removeItem(`made_current_client_${uid}`);
+    localStorage.removeItem("made_view_mode");
+    localStorage.removeItem("made_tutorial_seen");
+  } catch(e) {}
+  state.session = null; state.profile = null; state.currentClientId = null; state.currentClientName = null;
+}
+
 /* ---------------- PROFILE ---------------- */
 function renderProfile(){
   const name = state.profile?.full_name || "";
@@ -1769,6 +1997,22 @@ function renderProfile(){
       </div>
       <button class="btn outline" id="save-pass-btn" style="width:100%;margin-bottom:24px;">Changer le mot de passe</button>
 
+      <div class="data-zone">
+        <h3>Mes données et confidentialité</h3>
+        <p>Téléchargez une copie de toutes vos données (profil, clients, fiches), ou supprimez définitivement votre compte.</p>
+        <div class="data-links">
+          <a href="#/confidentialite">Politique de confidentialité</a>
+          <a href="#/mentions-legales">Mentions légales</a>
+        </div>
+        <button class="btn outline" id="export-btn" style="width:100%;margin-bottom:18px;">⬇ Exporter mes données</button>
+        <p>Supprimer mon compte efface aussi tous vos clients, fiches et photos. <strong>Cette action est irréversible.</strong></p>
+        <div class="field">
+          <label for="del-confirm">Pour confirmer, tapez SUPPRIMER</label>
+          <input type="text" id="del-confirm" autocomplete="off" autocapitalize="characters" placeholder="SUPPRIMER">
+        </div>
+        <button class="btn danger" id="delete-account-btn" style="width:100%;" disabled>Supprimer mon compte définitivement</button>
+      </div>
+
       <button class="btn outline" id="tutorial-btn" style="width:100%;margin-bottom:12px;">💡 Revoir le tutoriel</button>
       <button class="btn danger" id="logout-btn" style="width:100%;">Se déconnecter</button>
     </div>
@@ -1776,6 +2020,40 @@ function renderProfile(){
   wirePasswordToggles();
   wirePasswordRules("p-newpass", "p-rules");
   document.getElementById("tutorial-btn").addEventListener("click", showTutorial);
+
+  document.getElementById("export-btn").addEventListener("click", async () => {
+    const msg = document.getElementById("profile-msg");
+    const btn = document.getElementById("export-btn");
+    btn.disabled = true;
+    try {
+      const r = await exportMyData();
+      msg.innerHTML = `<div class="ok-msg">Export téléchargé (${r.fiches} fiche(s), ${r.clients} client(s)).</div>`;
+    } catch (err) {
+      msg.innerHTML = `<div class="error-msg">${h(friendlyError(err.message || String(err)))}</div>`;
+    }
+    btn.disabled = false;
+  });
+
+  const delInput = document.getElementById("del-confirm");
+  const delBtn = document.getElementById("delete-account-btn");
+  delInput.addEventListener("input", () => { delBtn.disabled = delInput.value.trim() !== "SUPPRIMER"; });
+  delBtn.addEventListener("click", async () => {
+    const msg = document.getElementById("profile-msg");
+    if (delInput.value.trim() !== "SUPPRIMER") return;
+    if (!confirm("Supprimer définitivement votre compte, vos clients, vos fiches et vos photos ? Impossible à annuler.")) return;
+    delBtn.disabled = true; delBtn.textContent = "Suppression en cours...";
+    try {
+      ficheDirtyCheck = null;
+      await deleteMyAccount();
+      alert("Votre compte et vos données ont été supprimés.");
+      location.hash = "#/";
+      route();
+    } catch (err) {
+      delBtn.disabled = false; delBtn.textContent = "Supprimer mon compte définitivement";
+      msg.innerHTML = `<div class="error-msg">La suppression a échoué : ${h(friendlyError(err.message || String(err)))}. Votre compte n'a pas été supprimé, vous pouvez réessayer ou nous écrire.</div>`;
+      window.scrollTo(0, 0);
+    }
+  });
 
   async function handleAvatarFile(file){
     if (!file) return;
