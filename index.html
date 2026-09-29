@@ -303,8 +303,29 @@ try {
 } catch(e) { /* localStorage indisponible */ }
 
 const app = document.getElementById("app");
-function h(str){ // tiny escape helper
-  const d = document.createElement("div"); d.textContent = str ?? ""; return d.innerHTML;
+function h(str){ // échappement HTML sûr pour le texte ET les attributs (guillemets inclus)
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+// Validation stricte des paramètres lus dans l'URL (#/jour/..., #/fiche/...)
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isValidDateStr(s){
+  if (!DATE_RE.test(s || "")) return false;
+  const [y, m, d] = s.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+}
+// N'accepte que les liens http(s) (bloque javascript:, data:, etc.)
+function safeHttpUrl(u){
+  try {
+    const url = new URL(String(u || "").trim());
+    return (url.protocol === "https:" || url.protocol === "http:") ? url.href : null;
+  } catch(e) { return null; }
 }
 function friendlyError(message){
   if (message === "Failed to fetch") {
@@ -361,9 +382,21 @@ async function route(){
   if (!state.profile) await loadProfile();
 
   if (hash === "#/" || hash === "") return renderHome();
-  if (hash.startsWith("#/jour/")) return renderDay(hash.replace("#/jour/",""));
-  if (hash.startsWith("#/fiche/nouvelle/")) return renderFiche(null, hash.replace("#/fiche/nouvelle/",""));
-  if (hash.startsWith("#/fiche/")) return renderFiche(hash.replace("#/fiche/",""));
+  if (hash.startsWith("#/jour/")) {
+    const ds = hash.slice("#/jour/".length);
+    if (!isValidDateStr(ds)) { location.hash = "#/"; return; }
+    return renderDay(ds);
+  }
+  if (hash.startsWith("#/fiche/nouvelle/")) {
+    const ds = hash.slice("#/fiche/nouvelle/".length);
+    if (!isValidDateStr(ds)) { location.hash = "#/"; return; }
+    return renderFiche(null, ds);
+  }
+  if (hash.startsWith("#/fiche/")) {
+    const id = hash.slice("#/fiche/".length);
+    if (!UUID_RE.test(id)) { location.hash = "#/"; return; }
+    return renderFiche(id);
+  }
   if (hash === "#/profil") return renderProfile();
   if (hash === "#/admin") return renderAdmin();
   if (hash === "#/a-faire") return renderTodoList();
@@ -1129,7 +1162,12 @@ async function renderFiche(cardId, dateForNew){
       alert(`Vous n'avez pas encore renseigné de lien ${p} dans votre profil. Ajoutez-le depuis votre profil (en haut à droite).`);
       return;
     }
-    window.open(link, "_blank", "noopener");
+    const safeLink = safeHttpUrl(link);
+    if (!safeLink) {
+      alert(`Le lien ${p} enregistré dans votre profil n'est pas valide (il doit commencer par https://). Corrigez-le depuis votre profil.`);
+      return;
+    }
+    window.open(safeLink, "_blank", "noopener,noreferrer");
   });
 
   document.getElementById("fiche-form").addEventListener("submit", async (e) => {
@@ -1687,10 +1725,18 @@ function renderProfile(){
   document.getElementById("save-social-btn").addEventListener("click", async () => {
     const msg = document.getElementById("profile-msg");
     const links = {};
+    let badLink = null;
     SOCIAL_LINK_PLATFORMS.forEach(p => {
       const val = document.getElementById(`p-social-${p}`).value.trim();
-      if (val) links[p] = val;
+      if (!val) return;
+      const safe = safeHttpUrl(val);
+      if (!safe) { badLink = p; return; }
+      links[p] = safe;
     });
+    if (badLink) {
+      msg.innerHTML = `<div class="error-msg">Le lien ${h(badLink)} n'est pas valide : il doit commencer par https://</div>`;
+      return;
+    }
     const { error } = await supabaseClient.from("profiles").update({ social_links: links }).eq("id", state.session.user.id);
     if (error) { msg.innerHTML = `<div class="error-msg">${h(error.message)}</div>`; return; }
     state.profile.social_links = links;
