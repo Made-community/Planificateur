@@ -147,10 +147,10 @@
   .legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;font-size:13px;color:var(--muted);}
   .legend span{display:inline-flex;align-items:center;gap:6px;}
   .dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
-  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;width:100%;box-sizing:border-box;}
   .cal-dow{text-align:center;font-size:12px;font-weight:700;color:var(--muted);padding-bottom:4px;}
   .cal-day{
-    aspect-ratio:1/1;background:var(--white);border-radius:10px;border:1.5px solid #eee3c8;
+    min-width:0;box-sizing:border-box;aspect-ratio:1/1;background:var(--white);border-radius:10px;border:1.5px solid #eee3c8;
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
     cursor:pointer;position:relative;min-height:52px;overflow:hidden;
   }
@@ -158,6 +158,10 @@
   .cal-day .num{font-weight:700;font-size:14px;color:var(--ink);position:relative;z-index:2;}
   .cal-day.today .num{color:var(--gold);}
   .cal-day.today{border-color:var(--gold);border-width:2px;}
+  .cal-day.today:not(.has-thumb){background:var(--gold);}
+  .cal-day.today:not(.has-thumb) .num{color:var(--green-dark);}
+  .cal-day.today.has-thumb{box-shadow:0 0 0 3px var(--gold);}
+  .cal-day.today.has-thumb .num{background:var(--gold);color:var(--green-dark);}
   .cal-day .dots{display:flex;gap:3px;position:relative;z-index:2;}
   .cal-day .dots .dot{width:6px;height:6px;}
   .cal-day.status-orange{background:#ffd2b0;border-color:var(--orange);border-width:2px;}
@@ -177,7 +181,19 @@
     position:absolute;top:2px;right:2px;background:rgba(35,46,21,.75);color:#fff;
     font-size:9px;font-weight:700;border-radius:999px;padding:1px 5px;z-index:2;
   }
-  .toolbar-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+  .toolbar-row{display:flex;gap:6px;flex-wrap:nowrap;margin-bottom:14px;}
+  .toolbar-row .btn{flex:1 1 auto;min-width:0;padding:8px 6px !important;font-size:13.5px;white-space:nowrap;}
+  .legend-note{font-size:12px;color:var(--muted);margin:-6px 0 14px;line-height:1.5;}
+  .fab{position:fixed;right:18px;bottom:22px;width:56px;height:56px;border-radius:50%;border:none;
+    background:var(--gold);color:var(--green-dark);font-size:30px;font-weight:700;line-height:1;cursor:pointer;
+    box-shadow:0 4px 14px rgba(0,0,0,.3);z-index:50;display:flex;align-items:center;justify-content:center;}
+  .upcoming{margin:22px 0 90px;}
+  .upcoming h3{color:var(--green-dark);font-size:15px;margin:0 0 10px;}
+  .up-row{display:flex;align-items:center;gap:10px;background:var(--white);border:1.5px solid #eee3c8;border-radius:10px;
+    padding:10px 12px;margin-bottom:8px;cursor:pointer;font-size:14px;}
+  .up-row .up-date{font-weight:700;color:var(--green-dark);text-transform:capitalize;flex:1;min-width:0;}
+  .up-row .up-time{color:var(--muted);font-size:13px;}
+  .up-none{color:var(--muted);font-size:13px;}
   .view-switch{display:flex;background:var(--white);border:1.5px solid #e2d8bd;border-radius:10px;overflow:hidden;margin-bottom:12px;}
   .view-switch button{flex:1;border:none;background:transparent;padding:10px 6px;font-weight:700;color:var(--green);cursor:pointer;font-size:14px;}
   .view-switch button.active{background:var(--green);color:#fff;}
@@ -705,7 +721,7 @@ function topbarHTML(){
         <span>MADE planificateur</span>
       </a>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        ${state.profile?.is_cm ? `<button class="btn outline" style="padding:8px 14px;" onclick="location.hash='#/clients'">🗂 ${state.currentClientId ? h(state.currentClientName || "Client") : "Mon calendrier"}</button>` : ""}
+        ${state.profile?.is_cm ? `<button class="btn outline" style="padding:8px 14px;" onclick="location.hash='#/clients'" title="Changer de calendrier (client)">🗂 ${state.currentClientId ? h(state.currentClientName || "Client") : "Mon calendrier"} ▾</button>` : ""}
         ${state.profile?.is_admin ? `<button class="btn outline" style="padding:8px 14px;" onclick="location.hash='#/admin'">Vue d'ensemble</button>` : ""}
         <button class="profile-chip" onclick="location.hash='#/profil'">
           <span>${h(name)}</span>
@@ -817,8 +833,40 @@ async function renderHome(){
       ${DOW_FR.map(d => `<div class="cal-dow">${d}</div>`).join("")}
       ${cells}
     </div>
+    <div class="upcoming" id="upcoming"></div>
+    <button class="fab" title="Ajouter une fiche" aria-label="Ajouter une fiche" onclick="location.hash='#/fiche/nouvelle/${(y === today.getFullYear() && m === today.getMonth()) ? todayStr : fmtDate(y, m, 1)}'">+</button>
   `;
+  loadUpcoming(todayStr);
   maybeShowTutorial();
+}
+
+async function loadUpcoming(todayStr){
+  const box = document.getElementById("upcoming");
+  if (!box) return;
+  let q = supabaseClient.from("content_cards")
+    .select("id, card_date, status, platform, post_time")
+    .is("deleted_at", null)
+    .gte("card_date", todayStr)
+    .in("status", ["a_faire", "programme"])
+    .order("card_date", { ascending: true })
+    .order("post_time", { ascending: true })
+    .limit(3);
+  q = scopeToCurrentCalendar(q);
+  const { data, error } = await q;
+  const box2 = document.getElementById("upcoming");
+  if (!box2 || error) { if (box2) box2.innerHTML = ""; return; }
+  const rows = (data || []).map(c => {
+    const icon = PLATFORM_ICON[c.platform] || PLATFORM_ICON["Autre"];
+    const p = String(c.card_date).split("-").map(Number);
+    const d = new Date(p[0], p[1] - 1, p[2]);
+    return `<div class="up-row" onclick="location.hash='#/fiche/${h(c.id)}'">
+      <i class="${icon}"></i>
+      <span class="up-date">${DOW_LONG[d.getDay()]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}</span>
+      ${c.post_time ? `<span class="up-time">${h(String(c.post_time).slice(0,5))}</span>` : ""}
+      <span class="status-pill ${h(c.status)}">${h(STATUS_LABEL[c.status] || "")}</span>
+    </div>`;
+  }).join("");
+  box2.innerHTML = `<h3>Prochaines publications</h3>` + (rows || `<div class="up-none">Rien de prévu pour l'instant.</div>`);
 }
 
 function tutorialHTML(){
@@ -903,7 +951,8 @@ function homeToolbarHTML(){
       <span><span class="dot" style="background:var(--orange)"></span> À faire</span>
       <span><span class="dot" style="background:var(--yellow)"></span> Programmé</span>
       <span><span class="dot" style="background:var(--vert-ok)"></span> Posté</span>
-    </div>`;
+    </div>
+    <div class="legend-note">Le chiffre sur une case = nombre de fiches ce jour-là. Les petits points = autres statuts présents le même jour.</div>`;
 }
 
 function setViewMode(mode){
@@ -1002,6 +1051,8 @@ async function renderRangeView(){
     </div>
     ${homeToolbarHTML()}
     ${error ? `<div class="error-msg">${h(error.message)}</div>` : blocks}
+    <button class="fab" title="Ajouter une fiche" aria-label="Ajouter une fiche" style="bottom:22px;" onclick="location.hash='#/fiche/nouvelle/${(todayStr >= dateStrOf(start) && todayStr <= dateStrOf(end)) ? todayStr : dateStrOf(start)}'">+</button>
+    <div style="height:80px;"></div>
   `;
   maybeShowTutorial();
 }
