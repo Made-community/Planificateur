@@ -190,6 +190,15 @@
     padding:12px 16px;border-radius:12px;font-size:14px;z-index:3000;box-shadow:0 4px 14px rgba(0,0,0,.35);
     display:flex;gap:14px;align-items:center;max-width:92vw;}
   .toast button{background:none;border:none;color:var(--gold);font-weight:800;font-size:14px;cursor:pointer;padding:0;}
+  details.acc{background:var(--white);border:1.5px solid #eee3c8;border-radius:12px;margin-bottom:10px;overflow:hidden;}
+  details.acc>summary{list-style:none;cursor:pointer;padding:14px 16px;font-weight:800;color:var(--green-dark);font-size:15px;
+    display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  details.acc>summary::-webkit-details-marker{display:none;}
+  details.acc>summary::after{content:"▾";color:var(--green);font-size:16px;transition:transform .2s;}
+  details.acc[open]>summary::after{transform:rotate(180deg);}
+  details.acc[open]>summary{border-bottom:1px solid #eee3c8;}
+  details.acc>.acc-body{padding:16px;}
+  details.acc.danger-zone>summary{color:#8f3821;}
   .toolbar-row{display:flex;gap:6px;flex-wrap:nowrap;margin-bottom:14px;}
   .toolbar-row .btn{flex:1 1 auto;min-width:0;padding:8px 6px !important;font-size:13.5px;white-space:nowrap;}
   .legend-note{font-size:12px;color:var(--muted);margin:-6px 0 14px;line-height:1.5;}
@@ -2124,15 +2133,20 @@ function renderProfile(){
         </label>
       </div>
 
-      <div class="field">
-        <label>Nom affiché</label>
-        <input type="text" id="p-name" value="${h(name)}">
-      </div>
-      <button class="btn gold" id="save-name-btn" style="width:100%;margin-bottom:24px;">Enregistrer le nom</button>
+      <details class="acc" open>
+        <summary>👤 Mon profil</summary>
+        <div class="acc-body">
+          <div class="field">
+            <label>Nom affiché</label>
+            <input type="text" id="p-name" value="${h(name)}">
+          </div>
+          <button class="btn gold" id="save-name-btn" style="width:100%;">Enregistrer le nom</button>
+        </div>
+      </details>
 
-      <hr style="border:none;border-top:1px solid #eee3c8;margin:18px 0;">
-
-      <h3 style="color:var(--green-dark);font-size:15px;margin:0 0 12px;">Vos réseaux sociaux</h3>
+      <details class="acc">
+        <summary>🔗 Mes réseaux sociaux</summary>
+        <div class="acc-body">
       <p style="color:var(--muted);font-size:13px;margin:0 0 14px;">Collez le lien de votre profil sur chaque réseau — un bouton apparaîtra sur vos fiches de contenu pour y accéder en un clic.</p>
       ${SOCIAL_LINK_PLATFORMS.map(p => `
         <div class="field">
@@ -2140,10 +2154,13 @@ function renderProfile(){
           <input type="text" id="p-social-${p}" placeholder="https://..." value="${h((state.profile?.social_links || {})[p] || "")}">
         </div>
       `).join("")}
-      <button class="btn gold" id="save-social-btn" style="width:100%;margin-bottom:24px;">Enregistrer mes réseaux</button>
+      <button class="btn gold" id="save-social-btn" style="width:100%;">Enregistrer mes réseaux</button>
+        </div>
+      </details>
 
-      <hr style="border:none;border-top:1px solid #eee3c8;margin:18px 0;">
-
+      <details class="acc">
+        <summary>🔒 Connexion et mot de passe</summary>
+        <div class="acc-body">
       <div class="field">
         <label>E-mail</label>
         <input type="text" value="${h(state.session.user.email)}" disabled>
@@ -2170,10 +2187,13 @@ function renderProfile(){
           <button type="button" class="password-toggle" data-target="p-newpass2">Afficher</button>
         </div>
       </div>
-      <button class="btn outline" id="save-pass-btn" style="width:100%;margin-bottom:24px;">Changer le mot de passe</button>
+      <button class="btn outline" id="save-pass-btn" style="width:100%;">Changer le mot de passe</button>
+        </div>
+      </details>
 
-      <div class="data-zone">
-        <h3>Mes données et confidentialité</h3>
+      <details class="acc danger-zone">
+        <summary>🛡 Mes données et confidentialité</summary>
+        <div class="acc-body">
         <p>Téléchargez une copie de toutes vos données (profil, clients, fiches), ou supprimez définitivement votre compte.</p>
         <div class="data-links">
           <a href="#/confidentialite" target="_blank" rel="noopener">Politique de confidentialité</a>
@@ -2186,9 +2206,10 @@ function renderProfile(){
           <input type="text" id="del-confirm" autocomplete="off" autocapitalize="characters" placeholder="SUPPRIMER">
         </div>
         <button class="btn danger" id="delete-account-btn" style="width:100%;" disabled>Supprimer mon compte définitivement</button>
-      </div>
+        </div>
+      </details>
 
-      <button class="btn outline" id="tutorial-btn" style="width:100%;margin-bottom:12px;">💡 Revoir le tutoriel</button>
+      <button class="btn outline" id="tutorial-btn" style="width:100%;margin:8px 0 12px;">💡 Revoir le tutoriel</button>
       <button class="btn danger" id="logout-btn" style="width:100%;">Se déconnecter</button>
     </div>
   `;
