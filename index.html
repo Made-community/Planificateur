@@ -199,6 +199,27 @@
   details.acc[open]>summary{border-bottom:1px solid #eee3c8;}
   details.acc>.acc-body{padding:16px;}
   details.acc.danger-zone>summary{color:#8f3821;}
+  .task-badge{display:inline-block;min-width:18px;padding:0 6px;margin-left:6px;border-radius:999px;background:var(--orange);color:#fff;font-size:12px;font-weight:800;line-height:18px;text-align:center;}
+  .task-badge:empty{display:none;}
+  .tasks-box{border:1.5px solid #e2d8bd;border-radius:12px;padding:12px;background:#fffdf7;}
+  .tasks-head{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:8px;}
+  .task-row{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid #f0e8d0;}
+  .task-row:last-of-type{border-bottom:none;}
+  .task-row input[type=checkbox]{width:22px;height:22px;flex:none;accent-color:var(--green);margin:0;}
+  .task-row .t{flex:1;min-width:0;word-break:break-word;font-size:14px;}
+  .task-row.done .t{text-decoration:line-through;color:var(--muted);}
+  .task-row .t-del{flex:none;background:none;border:none;color:#a33;font-size:16px;cursor:pointer;padding:4px 8px;}
+  .task-add{display:flex;gap:8px;margin-top:10px;}
+  .task-add input{flex:1;min-width:0;padding:11px 12px;border:1.5px solid #ddd3ba;border-radius:10px;font-size:14px;}
+  .task-add button{flex:none;padding:0 16px;}
+  .tl-date{font-weight:800;color:var(--green-dark);text-transform:capitalize;margin:18px 0 8px;font-size:15px;}
+  .tl-late{display:inline-block;margin-left:6px;background:var(--orange);color:#fff;font-size:11px;border-radius:999px;padding:2px 8px;text-transform:none;vertical-align:middle;}
+  .tl-card{background:var(--white);border:1.5px solid #eee3c8;border-radius:12px;margin-bottom:10px;overflow:hidden;}
+  .tl-card-head{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#faf5e6;font-size:13px;color:var(--green-dark);font-weight:700;cursor:pointer;}
+  .tl-card-head .thumb{width:36px;height:36px;border-radius:8px;object-fit:cover;background:var(--beige);flex:none;}
+  .tl-card-head .d{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tl-task{padding:11px 14px;border-top:1px solid #f0e8d0;font-size:14px;cursor:pointer;display:flex;gap:10px;align-items:center;}
+  .tl-task::before{content:"";width:16px;height:16px;border:2px solid #cfc5a8;border-radius:5px;flex:none;}
   .toolbar-row{display:flex;gap:6px;flex-wrap:nowrap;margin-bottom:14px;}
   .toolbar-row .btn{flex:1 1 auto;min-width:0;padding:8px 6px !important;font-size:13.5px;white-space:nowrap;}
   .legend-note{font-size:12px;color:var(--muted);margin:-6px 0 14px;line-height:1.5;}
@@ -858,6 +879,7 @@ async function renderHome(){
     <button class="fab" title="Ajouter une fiche" aria-label="Ajouter une fiche" onclick="location.hash='#/fiche/nouvelle/${(y === today.getFullYear() && m === today.getMonth()) ? todayStr : fmtDate(y, m, 1)}'">+</button>
   `;
   loadUpcoming(todayStr);
+  refreshTaskBadge();
   maybeShowTutorial();
 }
 
@@ -1013,7 +1035,7 @@ function tutorialHTML(){
         <li>Cliquez sur un <strong>jour du calendrier</strong> pour voir ou créer du contenu. La miniature et le badge coloré indiquent la plateforme et le statut.</li>
         <li>Couleurs : <strong style="color:var(--orange);">orange</strong> à faire, <strong style="color:#9a7400;">jaune</strong> programmé, <strong style="color:var(--vert-ok);">vert</strong> posté.</li>
         <li>Les boutons <strong>Mois / Quinzaine / Semaine</strong> changent la vue : en semaine et quinzaine, les photos s'affichent en plus grand.</li>
-        <li>En haut du calendrier : <strong>Aujourd'hui</strong> pour revenir au mois en cours, <strong>À faire</strong> pour voir toutes les fiches en attente, <strong>Corbeille</strong> pour restaurer une fiche supprimée par erreur.</li>
+        <li>En haut du calendrier : <strong>Aujourd'hui</strong> pour revenir au mois en cours, <strong>À faire</strong> pour voir toutes vos tâches non terminées (à cocher dans chaque fiche), <strong>Corbeille</strong> pour restaurer une fiche supprimée par erreur.</li>
         <li>Dans une fiche : plusieurs photos possibles, glissez pour les faire défiler, remplacez-les individuellement, et le bouton à côté de la plateforme ouvre directement votre page sur ce réseau.</li>
         <li><strong>Glisser-déposer</strong> : maintenez le doigt sur une fiche puis glissez-la sur un autre jour pour la déplacer (un message permet d'annuler).</li>
         <li>Chaque fiche peut être <strong>dupliquée</strong>, <strong>déplacée</strong> à une autre date, ou mise à la <strong>corbeille</strong> (récupérable une semaine).</li>
@@ -1080,7 +1102,7 @@ function homeToolbarHTML(){
   return `
     <div class="toolbar-row">
       <button class="btn outline" style="padding:8px 14px;" onclick="goToday()">📅 Aujourd'hui</button>
-      <button class="btn outline" style="padding:8px 14px;" onclick="location.hash='#/a-faire'">📝 À faire</button>
+      <button class="btn outline" style="padding:8px 14px;" onclick="location.hash='#/a-faire'">📝 À faire<span class="task-badge" id="task-badge"></span></button>
       <button class="btn outline" style="padding:8px 14px;" onclick="location.hash='#/corbeille'">🗑 Corbeille</button>
     </div>
     <div class="legend">
@@ -1190,6 +1212,7 @@ async function renderRangeView(){
     <button class="fab" title="Ajouter une fiche" aria-label="Ajouter une fiche" style="bottom:22px;" onclick="location.hash='#/fiche/nouvelle/${(todayStr >= dateStrOf(start) && todayStr <= dateStrOf(end)) ? todayStr : dateStrOf(start)}'">+</button>
     <div style="height:80px;"></div>
   `;
+  refreshTaskBadge();
   maybeShowTutorial();
 }
 
@@ -1362,6 +1385,7 @@ async function renderFiche(cardId, dateForNew){
   }
   const dateStr = card ? card.card_date : dateForNew;
   ficheImagesInit(card);
+  await ficheTasksInit(card);
 
   app.innerHTML = topbarHTML() + `
     <div class="page-title-row">
@@ -1418,6 +1442,10 @@ async function renderFiche(cardId, dateForNew){
           <textarea id="f-observation" placeholder="Notes, remarques...">${card ? h(card.observation||"") : ""}</textarea>
         </div>
         <div class="field">
+          <label>Tâches à faire pour cette fiche</label>
+          <div id="f-tasks" class="tasks-box"></div>
+        </div>
+        <div class="field">
           <label>Statut</label>
           <select id="f-status">
             <option value="a_faire" ${(!card || card.status==="a_faire")?"selected":""}>À faire</option>
@@ -1444,6 +1472,7 @@ async function renderFiche(cardId, dateForNew){
   `;
 
   renderPhotoCarousel();
+  wireFicheTasks();
 
   function updateSocialLinkBtn(){
     const p = document.getElementById("f-platform").value;
@@ -1499,6 +1528,10 @@ async function renderFiche(cardId, dateForNew){
       };
       const { data: created, error } = await supabaseClient.from("content_cards").insert(dupPayload).select().single();
       if (error) { alert(error.message); return; }
+      if (ficheTasks.length) {
+        await supabaseClient.from("card_tasks").insert(
+          ficheTasks.map(t => ({ card_id: created.id, user_id: state.session.user.id, title: t.title, done: false })));
+      }
       location.hash = `#/fiche/${created.id}`;
     });
     document.getElementById("move-fiche-btn").addEventListener("click", async () => {
@@ -1517,13 +1550,99 @@ async function renderFiche(cardId, dateForNew){
   ficheDirtyCheck = () => ficheSnapshot() !== initialSnap;
 }
 
+/* ---------------- TÂCHES D'UNE FICHE ---------------- */
+let ficheTasks = [];          // { id, title, done, tmp? }
+let ficheTaskCardId = null;   // null = fiche pas encore créée (tâches gardées en mémoire)
+let ficheTasksError = "";
+
+async function ficheTasksInit(card){
+  ficheTasks = []; ficheTasksError = ""; ficheTaskCardId = card ? card.id : null;
+  if (!card) return;
+  const { data, error } = await supabaseClient.from("card_tasks")
+    .select("id, title, done").eq("card_id", card.id).order("created_at", { ascending: true });
+  if (error) ficheTasksError = "Les tâches ne sont pas disponibles pour le moment.";
+  else ficheTasks = data || [];
+}
+
+function renderFicheTasks(){
+  const box = document.getElementById("f-tasks");
+  if (!box) return;
+  const total = ficheTasks.length, done = ficheTasks.filter(t => t.done).length;
+  box.innerHTML = `
+    ${ficheTasksError ? `<div class="error-msg">${h(ficheTasksError)}</div>` : ""}
+    ${total ? `<div class="tasks-head"><span>${done} / ${total} faite${done > 1 ? "s" : ""}</span></div>` : ""}
+    ${ficheTasks.map(t => `
+      <div class="task-row ${t.done ? "done" : ""}">
+        <input type="checkbox" data-tid="${h(t.id)}" ${t.done ? "checked" : ""} aria-label="Tâche faite">
+        <span class="t">${h(t.title)}</span>
+        <button type="button" class="t-del" data-del="${h(t.id)}" aria-label="Supprimer la tâche">✕</button>
+      </div>`).join("")}
+    <div class="task-add">
+      <input type="text" id="f-task-input" maxlength="200" placeholder="Ajouter une tâche…" enterkeyhint="done">
+      <button type="button" class="btn gold" id="f-task-add-btn">+</button>
+    </div>`;
+  const inp = document.getElementById("f-task-input");
+  inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addFicheTask(); } });
+  document.getElementById("f-task-add-btn").addEventListener("click", addFicheTask);
+}
+
+async function addFicheTask(){
+  const inp = document.getElementById("f-task-input");
+  if (!inp) return;
+  const title = inp.value.trim().slice(0, 200);
+  if (!title) return;
+  if (ficheTaskCardId) {
+    const { data, error } = await supabaseClient.from("card_tasks")
+      .insert({ card_id: ficheTaskCardId, user_id: state.session.user.id, title }).select("id, title, done").single();
+    if (error) { notify("Impossible d'ajouter la tâche : " + error.message); return; }
+    ficheTasks.push(data);
+  } else {
+    ficheTasks.push({ id: "tmp_" + randId(), title, done: false, tmp: true });
+  }
+  renderFicheTasks();
+  const again = document.getElementById("f-task-input"); if (again) again.focus();
+}
+
+// Si du texte est tapé dans le champ mais pas encore ajouté, on l'ajoute à l'enregistrement
+async function flushTaskInput(){
+  const inp = document.getElementById("f-task-input");
+  if (inp && inp.value.trim()) { try { await addFicheTask(); } catch(e) {} }
+}
+
+function wireFicheTasks(){
+  renderFicheTasks();
+  const box = document.getElementById("f-tasks");
+  box.addEventListener("change", async (e) => {
+    const cb = e.target.closest("input[data-tid]"); if (!cb) return;
+    const t = ficheTasks.find(x => x.id === cb.dataset.tid); if (!t) return;
+    const prev = t.done; t.done = cb.checked;
+    if (ficheTaskCardId) {
+      const { error } = await supabaseClient.from("card_tasks")
+        .update({ done: t.done, done_at: t.done ? new Date().toISOString() : null }).eq("id", t.id);
+      if (error) { t.done = prev; notify("Impossible d'enregistrer : " + error.message); }
+    }
+    renderFicheTasks();
+  });
+  box.addEventListener("click", async (e) => {
+    const b = e.target.closest("button[data-del]"); if (!b) return;
+    const id = b.dataset.del;
+    if (ficheTaskCardId) {
+      const { error } = await supabaseClient.from("card_tasks").delete().eq("id", id);
+      if (error) { notify("Impossible de supprimer : " + error.message); return; }
+    }
+    ficheTasks = ficheTasks.filter(x => x.id !== id);
+    renderFicheTasks();
+  });
+}
+
 function ficheSnapshot(){
   const g = (id) => document.getElementById(id)?.value ?? "";
   return JSON.stringify({
     platform: g("f-platform"), format: g("f-format"), category: g("f-category"),
     time: g("f-time"), desc: g("f-desc"), hashtags: g("f-hashtags"),
     observation: g("f-observation"), status: g("f-status"),
-    images: ficheImages.map(i => i.url || "nouvelle:" + i.id)
+    images: ficheImages.map(i => i.url || "nouvelle:" + i.id),
+    tasks: ficheTaskCardId ? null : ficheTasks.map(t => t.title + "|" + t.done)
   });
 }
 
@@ -1579,6 +1698,7 @@ async function saveFiche(existingCard, dateStr, createNewAfter){
   const msg = document.getElementById("fiche-msg");
   msg.innerHTML = "";
   try {
+    await flushTaskInput();
     const imageUrls = await uploadAllImages();
     const payload = {
       user_id: state.session.user.id,
@@ -1600,8 +1720,13 @@ async function saveFiche(existingCard, dateStr, createNewAfter){
       const { error } = await supabaseClient.from("content_cards").update(payload).eq("id", existingCard.id);
       if (error) throw error;
     } else {
-      const { error } = await supabaseClient.from("content_cards").insert(payload);
+      const { data: created, error } = await supabaseClient.from("content_cards").insert(payload).select("id").single();
       if (error) throw error;
+      if (ficheTasks.length) {
+        const { error: tErr } = await supabaseClient.from("card_tasks").insert(
+          ficheTasks.map(t => ({ card_id: created.id, user_id: state.session.user.id, title: t.title, done: t.done, done_at: t.done ? new Date().toISOString() : null })));
+        if (tErr) notify("La fiche est enregistrée, mais pas ses tâches : " + tErr.message);
+      }
     }
 
     const removedUrls = originalImageUrls.filter(u => !imageUrls.includes(u));
@@ -1780,6 +1905,25 @@ function switchClientLocalReset(){
 }
 
 /* ---------------- LISTE "À FAIRE" ---------------- */
+// Requête des tâches non faites du calendrier actif (fiches non supprimées)
+function openTasksQuery(select, opts){
+  let q = supabaseClient.from("card_tasks").select(select, opts)
+    .eq("done", false)
+    .is("content_cards.deleted_at", null);
+  q = state.currentClientId
+    ? q.eq("content_cards.client_id", state.currentClientId)
+    : q.is("content_cards.client_id", null);
+  return q;
+}
+
+async function refreshTaskBadge(){
+  try {
+    const { count, error } = await openTasksQuery("id, content_cards!inner(id)", { count: "exact", head: true });
+    const el = document.getElementById("task-badge");
+    if (el) el.textContent = (!error && count) ? String(count > 99 ? "99+" : count) : "";
+  } catch(e) { /* pastille facultative */ }
+}
+
 async function renderTodoList(){
   app.innerHTML = topbarHTML() + `
     <div class="page-title-row">
@@ -1788,28 +1932,42 @@ async function renderTodoList(){
     </div>
     <div id="todo-wrap" class="center"><div class="spinner"></div></div>
   `;
-  let query = supabaseClient
-    .from("content_cards")
-    .select("*")
-    .eq("status", "a_faire")
-    .is("deleted_at", null)
-    .order("card_date", { ascending: true });
-  query = scopeToCurrentCalendar(query);
-  const { data, error } = await query;
+  const { data, error } = await openTasksQuery(
+    "id, title, created_at, content_cards!inner(id, card_date, platform, format, description, image_url, post_time)");
 
   const wrap = document.getElementById("todo-wrap");
+  wrap.classList.remove("center");
   if (error) { wrap.innerHTML = `<div class="error-msg">${h(error.message)}</div>`; return; }
-  if (!data || !data.length) { wrap.innerHTML = `<div class="empty-state">Rien à faire pour le moment 🎉</div>`; return; }
-  wrap.innerHTML = data.map(c => `
-    <div class="fiche-item" onclick="location.hash='#/fiche/${c.id}'">
-      ${c.image_url ? `<img class="thumb" src="${h(c.image_url)}">` : `<div class="thumb"></div>`}
-      <div class="info">
-        <div class="l1"><i class="${PLATFORM_ICON[c.platform] || PLATFORM_ICON["Autre"]}"></i> ${h(formatFrDate(c.card_date))}</div>
-        <div class="l2">${h(c.platform)} · ${h(c.format)} — ${h(c.description || "Sans description")}</div>
-      </div>
-      <span class="status-pill a_faire">À faire</span>
-    </div>
-  `).join("");
+  if (!data || !data.length) { wrap.innerHTML = `<div class="empty-state">Aucune tâche en attente 🎉<br><span style="font-size:13px;">Ajoutez des tâches depuis une fiche de contenu.</span></div>`; return; }
+
+  // regroupement : date -> fiche -> tâches
+  const cards = new Map();
+  data.forEach(t => {
+    const c = t.content_cards;
+    if (!cards.has(c.id)) cards.set(c.id, { card: c, tasks: [] });
+    cards.get(c.id).tasks.push(t);
+  });
+  const list = [...cards.values()].sort((a, b) =>
+    (a.card.card_date + (a.card.post_time || "99:99")).localeCompare(b.card.card_date + (b.card.post_time || "99:99")));
+  const todayStr = dateStrOf(new Date());
+  let html = "", lastDate = null;
+  list.forEach(({ card: c, tasks }) => {
+    if (c.card_date !== lastDate) {
+      lastDate = c.card_date;
+      html += `<div class="tl-date">${h(formatFrDate(c.card_date))}${c.card_date < todayStr ? `<span class="tl-late">En retard</span>` : (c.card_date === todayStr ? `<span class="tl-late" style="background:var(--gold);color:var(--green-dark);">Aujourd'hui</span>` : "")}</div>`;
+    }
+    tasks.sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
+    html += `
+      <div class="tl-card">
+        <div class="tl-card-head" onclick="location.hash='#/fiche/${h(c.id)}'">
+          ${c.image_url ? `<img class="thumb" src="${h(c.image_url)}" alt="">` : `<div class="thumb"></div>`}
+          <i class="${PLATFORM_ICON[c.platform] || PLATFORM_ICON["Autre"]}"></i>
+          <span class="d">${h(c.platform)} · ${h(c.format)}${c.description ? " — " + h(c.description) : ""}</span>
+        </div>
+        ${tasks.map(t => `<div class="tl-task" onclick="location.hash='#/fiche/${h(c.id)}'">${h(t.title)}</div>`).join("")}
+      </div>`;
+  });
+  wrap.innerHTML = html;
 }
 
 /* ---------------- CORBEILLE ---------------- */
@@ -1980,7 +2138,7 @@ function legalPrivacyHTML(){
     <ul>
       <li><strong>Votre compte :</strong> nom affiché, adresse e-mail, mot de passe (conservé sous forme chiffrée, nous ne pouvons pas le lire), date d'acceptation de cette politique.</li>
       <li><strong>Votre profil (facultatif) :</strong> photo de profil, liens de vos pages de réseaux sociaux.</li>
-      <li><strong>Vos contenus :</strong> les fiches de publication (date, plateforme, format, catégorie, heure, description, hashtags, observations, statut), leurs photos, et, si vous êtes Community Manager, les noms de vos clients.</li>
+      <li><strong>Vos contenus :</strong> les fiches de publication (date, plateforme, format, catégorie, heure, description, hashtags, observations, tâches, statut), leurs photos, et, si vous êtes Community Manager, les noms de vos clients.</li>
       <li><strong>Données techniques :</strong> journaux de connexion (dont l'adresse IP) tenus par nos hébergeurs pour la sécurité, et vérification anti-robot lors de la connexion.</li>
     </ul>
 
@@ -2169,12 +2327,15 @@ async function exportMyData(){
   if (prof.error) throw prof.error;
   const clients = await fetchAllRows(() => supabaseClient.from("clients").select("*").order("created_at", { ascending: true }).order("id"));
   const cards = await fetchAllRows(() => supabaseClient.from("content_cards").select("*").order("card_date", { ascending: true }).order("id"));
+  let tasks = [];
+  try { tasks = await fetchAllRows(() => supabaseClient.from("card_tasks").select("*").order("created_at", { ascending: true }).order("id")); } catch(e) { /* table absente : on exporte sans */ }
   const payload = {
     exporte_le: new Date().toISOString(),
     compte: { id: user.id, email: user.email, cree_le: user.created_at },
     profil: prof.data,
     clients,
-    fiches: cards
+    fiches: cards,
+    taches: tasks
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
