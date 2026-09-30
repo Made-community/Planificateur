@@ -269,6 +269,7 @@
     body.printing #print-root{display:block;color:#000;}
   }
   .profile-chip .avatar,.profile-avatar-big{color:var(--on-gold);}
+  :focus-visible{outline:3px solid var(--gold);outline-offset:2px;}
   mark{background:var(--gold-light);color:#232e15;border-radius:3px;padding:0 1px;}
   .toolbar-row{display:flex;gap:6px;flex-wrap:nowrap;margin-bottom:14px;}
   .toolbar-row .btn{flex:1 1 auto;min-width:0;padding:8px 6px !important;font-size:13.5px;white-space:nowrap;}
@@ -493,7 +494,106 @@ window.addEventListener("beforeunload", (e) => {
 });
 window.addEventListener("DOMContentLoaded", init);
 
+/* ---------------- PHOTOS PRIVÉES (URL signées) + ACCESSIBILITÉ ---------------- */
+const PRIV_MARKER = "/object/public/content-images/";
+const SIGN_TTL = 6 * 3600; // durée de validité d'un lien de photo : 6 h
+const TRANSPARENT_PX = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+const signCache = new Map(); // chemin -> { exp, p: Promise<url|null> }
+
+function contentPath(url){
+  if (typeof url !== "string") return null;
+  const i = url.indexOf(PRIV_MARKER);
+  if (i === -1) return null;
+  try {
+    const path = decodeURIComponent(url.slice(i + PRIV_MARKER.length).split("?")[0]);
+    return (path && path.includes("/") && !path.includes("..")) ? path : null;
+  } catch(e) { return null; }
+}
+
+// Attributs src d'une <img> : les photos du bucket privé sont chargées via un lien signé temporaire
+function pimg(url){
+  return contentPath(url) ? `src="${TRANSPARENT_PX}" data-priv="${h(url)}"` : `src="${h(url)}"`;
+}
+
+function signPaths(paths){
+  const now = Date.now();
+  const need = [...new Set(paths.filter(Boolean))].filter(p => { const c = signCache.get(p); return !c || c.exp < now + 60000; });
+  for (let i = 0; i < need.length; i += 100) {
+    const chunk = need.slice(i, i + 100);
+    const exp = now + SIGN_TTL * 1000;
+    const batch = Promise.resolve(supabaseClient.storage.from("content-images").createSignedUrls(chunk, SIGN_TTL))
+      .then(({ data }) => { const m = new Map(); (data || []).forEach(d => { if (d && d.signedUrl && !d.error) m.set(d.path, d.signedUrl); }); return m; })
+      .catch(() => new Map());
+    chunk.forEach(pth => {
+      const pr = batch.then(m => { const u = m.get(pth) || null; if (!u) signCache.delete(pth); return u; });
+      signCache.set(pth, { exp, p: pr });
+    });
+  }
+  return Promise.all(paths.map(pth => pth ? signCache.get(pth).p : null));
+}
+
+async function hydratePrivateImages(root){
+  const imgs = [...(root || document).querySelectorAll("img[data-priv]")];
+  if (!imgs.length) return;
+  const items = imgs.map(im => { const url = im.getAttribute("data-priv"); return { im, url, path: contentPath(url) }; });
+  const urls = await signPaths(items.map(i => i.path));
+  items.forEach((it, k) => {
+    if (it.im.getAttribute("data-priv") !== it.url) return;
+    it.im.src = urls[k] || it.url; // repli : l'adresse d'origine (fonctionne tant que le bucket est public)
+    it.im.removeAttribute("data-priv");
+  });
+}
+
+const A11Y_NATIVE = new Set(["BUTTON", "A", "INPUT", "SELECT", "TEXTAREA", "LABEL", "SUMMARY"]);
+function enhanceA11y(){
+  document.querySelectorAll("[onclick]").forEach(el => {
+    if (A11Y_NATIVE.has(el.tagName)) return;
+    if (!el.hasAttribute("role")) el.setAttribute("role", "button");
+    if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex", "0");
+  });
+  document.querySelectorAll(".cal-day[data-drop-date]").forEach(el => {
+    if (el.hasAttribute("aria-label")) return;
+    const ds = el.getAttribute("data-drop-date");
+    const badge = el.querySelector(".count-badge");
+    const n = badge ? parseInt(badge.textContent, 10) : (el.classList.contains("has-thumb") ? 1 : 0);
+    el.setAttribute("aria-label", formatFrDate(ds) + (n ? `, ${n} fiche${n > 1 ? "s" : ""}` : ", aucune fiche"));
+  });
+  document.querySelectorAll(".month-nav button").forEach((b, i) => {
+    if (!b.hasAttribute("aria-label")) b.setAttribute("aria-label", i === 0 ? "Période précédente" : "Période suivante");
+  });
+  document.querySelectorAll(".back-btn").forEach(b => { if (!b.hasAttribute("aria-label")) b.setAttribute("aria-label", "Retour"); });
+  document.querySelectorAll("button[title]").forEach(b => { if (!b.hasAttribute("aria-label")) b.setAttribute("aria-label", b.getAttribute("title")); });
+  document.querySelectorAll(".error-msg:not([role])").forEach(el => el.setAttribute("role", "alert"));
+  document.querySelectorAll(".ok-msg:not([role])").forEach(el => el.setAttribute("role", "status"));
+  document.querySelectorAll(".spinner:not([role])").forEach(el => { el.setAttribute("role", "status"); el.setAttribute("aria-label", "Chargement"); });
+  document.querySelectorAll("img:not([alt])").forEach(im => im.setAttribute("alt", ""));
+  document.querySelectorAll(".field").forEach(f => {
+    const lab = f.querySelector(":scope > label:not([for])");
+    if (!lab) return;
+    const ctl = f.querySelector("input[id],select[id],textarea[id]");
+    if (ctl) lab.setAttribute("for", ctl.id);
+  });
+}
+
+function startDomEnhancers(){
+  let raf = 0;
+  const run = () => { raf = 0; try { hydratePrivateImages(); enhanceA11y(); } catch(e) {} };
+  new MutationObserver(() => { if (!raf) raf = requestAnimationFrame(run); })
+    .observe(document.body, { childList: true, subtree: true });
+  // Clavier : Entrée / Espace activent les éléments cliquables non natifs
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const el = e.target;
+    if (el && el.getAttribute && el.getAttribute("role") === "button" && el.hasAttribute("onclick") && !A11Y_NATIVE.has(el.tagName)) {
+      e.preventDefault();
+      el.click();
+    }
+  });
+  run();
+}
+
 function setupPwa(){
+  startDomEnhancers();
   syncThemeColor();
   if ("serviceWorker" in navigator && location.protocol === "https:") {
     navigator.serviceWorker.register("sw.js").catch(() => { /* facultatif */ });
@@ -908,7 +1008,7 @@ async function renderHome(){
       const otherStatuses = STATUS_ORDER.filter(s => s !== rep.status && cards.some(c => c.status === s));
       cells += `
         <div class="cal-day has-thumb ${isToday ? "today":""}" style="border:2.5px solid ${badgeColor};" data-drop-date="${dateStr}" ${cards.length === 1 ? `data-drag-card="${h(rep.id)}" data-drag-date="${dateStr}"` : `data-drag-multi="1"`} onclick="location.hash='#/jour/${dateStr}'">
-          ${rep.image_url ? `<img class="thumb-bg" src="${h(rep.image_url)}">` : `<div class="thumb-bg thumb-bg-empty"></div>`}
+          ${rep.image_url ? `<img class="thumb-bg" ${pimg(rep.image_url)} alt="">` : `<div class="thumb-bg thumb-bg-empty"></div>`}
           <span class="num">${d}</span>
           ${cards.length > 1 ? `<span class="count-badge">${cards.length}</span>` : ""}
           <span class="platform-badge" style="background:${badgeColor}"><i class="${icon}"></i></span>
@@ -975,7 +1075,7 @@ async function loadUpcoming(todayStr){
 function notify(msg, action){
   const old = document.getElementById("toast"); if (old) old.remove();
   const t = document.createElement("div");
-  t.className = "toast"; t.id = "toast";
+  t.className = "toast"; t.id = "toast"; t.setAttribute("role", "status");
   const sp = document.createElement("span"); sp.textContent = msg; t.appendChild(sp);
   if (action) {
     const b = document.createElement("button"); b.textContent = action.label;
@@ -1202,7 +1302,7 @@ function rangeCardHTML(c){
     <div class="rg-card" data-drag-card="${h(c.id)}" data-drag-date="${h(c.card_date)}" onclick="location.hash='#/fiche/${c.id}'">
       <div class="rg-thumb" style="border-color:${color};">
         ${imgs[0]
-          ? `<img src="${h(imgs[0])}" loading="lazy" alt="">`
+          ? `<img ${pimg(imgs[0])} loading="lazy" alt="">`
           : `<div class="rg-empty"><i class="${icon}"></i></div>`}
         <span class="platform-badge rg-badge" style="background:${color}"><i class="${icon}"></i></span>
         ${c.post_time ? `<span class="rg-time">${h(c.post_time)}</span>` : ""}
@@ -1310,7 +1410,7 @@ async function renderDay(dateStr){
   }
   list.innerHTML = data.map(c => `
     <div class="fiche-item" onclick="location.hash='#/fiche/${c.id}'">
-      ${c.image_url ? `<img class="thumb" src="${h(c.image_url)}">` : `<div class="thumb"></div>`}
+      ${c.image_url ? `<img class="thumb" ${pimg(c.image_url)} alt="">` : `<div class="thumb"></div>`}
       <div class="info">
         <div class="l1"><i class="${PLATFORM_ICON[c.platform] || PLATFORM_ICON["Autre"]}"></i> ${h(c.platform)} · ${h(c.format)}${c.post_time ? " · " + h(c.post_time) : ""}</div>
         <div class="l2">${h(c.description || "Sans description")}</div>
@@ -1402,7 +1502,7 @@ function renderPhotoCarousel(){
   if (!wrap) return;
   wrap.innerHTML = ficheImages.map((img, i) => `
     <div class="photo-slide">
-      <img src="${h(img.preview)}">
+      <img ${pimg(img.preview)} alt="Photo du contenu">
       <div class="photo-actions">
         <button type="button" data-action="replace" data-idx="${i}">Remplacer</button>
         <button type="button" data-action="remove" data-idx="${i}">Supprimer</button>
@@ -1726,12 +1826,13 @@ async function exportFichePdf(dateStr){
       </div>
     </div>
     <div class="pr-meta">${pairs.map(p => `<div><b>${h(p[0])} :</b> ${h(p[1])}</div>`).join("")}</div>
-    ${urls.length ? `<div class="pr-photos ${urls.length === 1 ? "one" : ""}">${urls.map(u => `<img src="${h(u)}" alt="">`).join("")}</div>` : ""}
+    ${urls.length ? `<div class="pr-photos ${urls.length === 1 ? "one" : ""}">${urls.map(u => `<img ${pimg(u)} alt="">`).join("")}</div>` : ""}
     ${block("Description", g("f-desc"))}
     ${block("Hashtags", g("f-hashtags"))}
     ${withObs ? block("Observations", g("f-observation")) : ""}
     <div class="pr-foot">Document généré avec MADE planificateur le ${h(new Date().toLocaleDateString("fr-FR"))}</div>`;
   document.body.appendChild(root);
+  await hydratePrivateImages(root);
 
   const imgs = [...root.querySelectorAll("img")];
   await Promise.race([
@@ -2093,7 +2194,7 @@ async function renderSearch(){
     res.innerHTML = `<div style="font-size:13px;color:var(--muted);margin-bottom:8px;">${found.length} résultat(s)${found.length > 100 ? " — affichage des 100 plus récents" : ""}</div>` +
       shown.map(c => `
         <div class="fiche-item" onclick="location.hash='#/fiche/${h(c.id)}'">
-          ${c.image_url ? `<img class="thumb" src="${h(c.image_url)}" alt="">` : `<div class="thumb"></div>`}
+          ${c.image_url ? `<img class="thumb" ${pimg(c.image_url)} alt="">` : `<div class="thumb"></div>`}
           <div class="info">
             <div class="l1"><i class="${PLATFORM_ICON[c.platform] || PLATFORM_ICON["Autre"]}"></i> ${h(formatFrDate(c.card_date))}</div>
             <div class="l2">${h(c.platform)} · ${h(c.format)} — ${rawWords.length ? hl(c.description || c.hashtags || "Sans description", rawWords) : h(c.description || "Sans description")}</div>
@@ -2144,7 +2245,7 @@ async function renderTodoList(){
     html += `
       <div class="tl-card">
         <div class="tl-card-head" onclick="location.hash='#/fiche/${h(c.id)}'">
-          ${c.image_url ? `<img class="thumb" src="${h(c.image_url)}" alt="">` : `<div class="thumb"></div>`}
+          ${c.image_url ? `<img class="thumb" ${pimg(c.image_url)} alt="">` : `<div class="thumb"></div>`}
           <i class="${PLATFORM_ICON[c.platform] || PLATFORM_ICON["Autre"]}"></i>
           <span class="d">${h(c.platform)} · ${h(c.format)}${c.description ? " — " + h(c.description) : ""}</span>
         </div>
@@ -2179,7 +2280,7 @@ async function renderTrash(){
   if (!data || !data.length) { wrap.innerHTML = `<div class="empty-state">La corbeille est vide.</div>`; return; }
   wrap.innerHTML = data.map(c => `
     <div class="fiche-item" style="cursor:default;">
-      ${c.image_url ? `<img class="thumb" src="${h(c.image_url)}">` : `<div class="thumb"></div>`}
+      ${c.image_url ? `<img class="thumb" ${pimg(c.image_url)} alt="">` : `<div class="thumb"></div>`}
       <div class="info">
         <div class="l1">${h(formatFrDate(c.card_date))}</div>
         <div class="l2">${h(c.platform)} · ${h(c.format)}</div>
