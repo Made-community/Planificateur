@@ -437,11 +437,14 @@ async function route(){
   // Pages légales : accessibles avec ou sans connexion
   if (hash === "#/mentions-legales") return renderLegal("mentions");
   if (hash === "#/confidentialite") return renderLegal("privacy");
+  if (hash === "#/cgu") return renderLegal("cgu");
   if (!state.session) {
     if (hash.startsWith("#/signup")) return renderSignup();
     return renderLogin();
   }
   if (!state.profile) await loadProfile();
+  // Comptes créés avant les CGU : acceptation demandée une fois
+  if (state.termsOkFor !== state.session.user.id && !state.session.user.user_metadata?.terms_accepted_at) return renderTermsGate();
 
   if (hash === "#/" || hash === "") return renderHome();
   if (hash.startsWith("#/jour/")) {
@@ -556,7 +559,7 @@ function renderLogin(){
         </form>
       </div>
       <p class="auth-switch">Pas encore de compte ? <a href="#/signup">Créer un compte</a></p>
-      <p class="auth-legal"><a href="#/mentions-legales" target="_blank" rel="noopener">Mentions légales</a> · <a href="#/confidentialite" target="_blank" rel="noopener">Confidentialité</a></p>
+      <p class="auth-legal"><a href="#/mentions-legales" target="_blank" rel="noopener">Mentions légales</a> · <a href="#/cgu" target="_blank" rel="noopener">CGU</a> · <a href="#/confidentialite" target="_blank" rel="noopener">Confidentialité</a></p>
     </div>
   `;
   mountTurnstile();
@@ -623,14 +626,14 @@ function renderSignup(){
           </div>
           <label class="consent">
             <input type="checkbox" id="su-consent" required>
-            <span>J'ai lu la <a href="#/confidentialite" target="_blank" rel="noopener">politique de confidentialité</a> et j'accepte que mes données soient traitées dans ce cadre.</span>
+            <span>J'ai lu et j'accepte les <a href="#/cgu" target="_blank" rel="noopener">conditions générales d'utilisation</a> et la <a href="#/confidentialite" target="_blank" rel="noopener">politique de confidentialité</a>, et j'accepte que mes données soient traitées dans ce cadre.</span>
           </label>
           <div id="turnstile-box"></div>
           <button class="btn gold" type="submit" style="width:100%;" id="signup-btn">Créer mon compte</button>
         </form>
       </div>
       <p class="auth-switch">Déjà un compte ? <a href="#/">Se connecter</a></p>
-      <p class="auth-legal"><a href="#/mentions-legales" target="_blank" rel="noopener">Mentions légales</a> · <a href="#/confidentialite" target="_blank" rel="noopener">Confidentialité</a></p>
+      <p class="auth-legal"><a href="#/mentions-legales" target="_blank" rel="noopener">Mentions légales</a> · <a href="#/cgu" target="_blank" rel="noopener">CGU</a> · <a href="#/confidentialite" target="_blank" rel="noopener">Confidentialité</a></p>
     </div>
   `;
   mountTurnstile();
@@ -666,7 +669,7 @@ function renderSignup(){
     const { data, error } = await supabaseClient.auth.signUp({
       email,
       password: pass,
-      options: { data: { full_name: name, privacy_accepted_at: new Date().toISOString() }, captchaToken: token || undefined }
+      options: { data: { full_name: name, privacy_accepted_at: new Date().toISOString(), terms_accepted_at: new Date().toISOString() }, captchaToken: token || undefined }
     });
     if (error) {
       resetTurnstile(); // un jeton captcha ne sert qu'une fois : on en redemande un
@@ -1926,7 +1929,8 @@ const LEGAL = {
   vat: "FR51104737218",
   director: "Madame Céline ADAM",
   dbRegion: "l'Union européenne (Irlande)",
-  updated: "29 septembre 2026"
+  updated: "29 septembre 2026",
+  cguUpdated: "30 septembre 2026"
 };
 
 function legalMentionsHTML(){
@@ -1956,6 +1960,9 @@ function legalMentionsHTML(){
 
     <h3>Données personnelles</h3>
     <p>Le traitement de vos données personnelles est décrit dans la <a href="#/confidentialite">politique de confidentialité</a>.</p>
+
+    <h3>Conditions d'utilisation</h3>
+    <p>L'utilisation de l'application est régie par les <a href="#/cgu">conditions générales d'utilisation</a>.</p>
 
     <h3>Responsabilité</h3>
     <p>${h(L.name)} s'efforce d'assurer la disponibilité et l'exactitude de l'application, sans pouvoir garantir l'absence d'interruption ou d'erreur. L'application sert à préparer et organiser vos publications : elle ne publie rien à votre place sur les réseaux sociaux.</p>
@@ -2024,21 +2031,122 @@ function legalPrivacyHTML(){
     <p class="maj">Dernière mise à jour : ${h(L.updated)}</p>`;
 }
 
+function legalCguHTML(){
+  const L = LEGAL;
+  return `
+    <p>Les présentes conditions générales d'utilisation (« CGU ») encadrent l'utilisation de l'application web <strong>MADE planificateur</strong>, éditée par ${h(L.name)}, ${h(L.form)}, ${h(L.address)} (« l'Éditeur »). En créant un compte ou en utilisant l'application, vous acceptez ces CGU.</p>
+
+    <h3>1. À quoi sert l'application ?</h3>
+    <p>MADE planificateur permet de préparer, organiser et suivre des publications sur les réseaux sociaux : calendrier, fiches de contenu (date, plateforme, format, description, hashtags, photos, statut), gestion de plusieurs clients pour les Community Managers, corbeille. <strong>L'application ne publie rien à votre place</strong> sur les réseaux sociaux.</p>
+
+    <h3>2. Qui peut l'utiliser ?</h3>
+    <p>L'application est destinée aux clients de ${h(L.name)} et aux Community Managers qui travaillent avec elle, âgés d'au moins 18 ans. Les conditions financières éventuelles (gratuité, abonnement, prestation associée) sont convenues séparément entre vous et l'Éditeur ; les présentes CGU n'y dérogent pas.</p>
+
+    <h3>3. Votre compte</h3>
+    <ul>
+      <li>Vous vous engagez à fournir une adresse e-mail valide et des informations exactes, et à les tenir à jour.</li>
+      <li>Votre mot de passe est personnel et confidentiel : ne le partagez pas. Vous êtes responsable de l'activité réalisée depuis votre compte. En cas de suspicion d'utilisation frauduleuse, changez votre mot de passe et prévenez-nous à <a href="mailto:${h(L.email)}">${h(L.email)}</a>.</li>
+      <li>Un compte est individuel : un compte ne doit pas être partagé entre plusieurs personnes.</li>
+    </ul>
+
+    <h3>4. Vos engagements</h3>
+    <p>Vous vous engagez à utiliser l'application de façon loyale et, en particulier, à :</p>
+    <ul>
+      <li>n'ajouter que des contenus (textes, photos, noms) dont vous détenez les droits ou pour lesquels vous avez les autorisations nécessaires, y compris le consentement des personnes identifiables sur les photos ;</li>
+      <li>ne pas ajouter de contenu illicite, diffamatoire, discriminatoire, haineux, pornographique, ou portant atteinte aux droits d'autrui ;</li>
+      <li>ne pas chercher à accéder aux données d'autres utilisateurs, ni perturber, surcharger ou contourner les protections de l'application (y compris la vérification anti-robot) ;</li>
+      <li>ne pas utiliser l'application pour envoyer des messages non sollicités ou tromper des tiers.</li>
+    </ul>
+    <p>Si vous êtes Community Manager, vous êtes responsable des contenus que vous ajoutez pour le compte de vos clients et de l'accord de ces derniers.</p>
+
+    <h3>5. Vos contenus</h3>
+    <p>Vous conservez tous vos droits sur les contenus que vous ajoutez. Vous accordez à l'Éditeur, pour la seule durée d'utilisation de votre compte, l'autorisation technique de les héberger, les stocker, les afficher et les sauvegarder afin de faire fonctionner l'application pour vous. L'Éditeur n'utilise pas vos contenus à d'autres fins.</p>
+
+    <h3>6. Propriété intellectuelle</h3>
+    <p>L'application, son nom, son logo, son design et son code sont la propriété de ${h(L.name)}. Ces CGU ne vous donnent qu'un droit personnel, non exclusif et non transférable d'utiliser l'application, pendant la durée de votre compte. Toute copie ou reproduction est interdite sans accord écrit.</p>
+
+    <h3>7. Disponibilité, sauvegarde et corbeille</h3>
+    <ul>
+      <li>Nous faisons au mieux pour que l'application soit accessible en continu, mais des interruptions (maintenance, panne, cause extérieure) sont possibles. L'application est fournie « en l'état ».</li>
+      <li>Des limites de taille et de format s'appliquent aux photos.</li>
+      <li>Une fiche mise à la corbeille est supprimée définitivement, photos comprises, au bout de 7 jours.</li>
+      <li>Nous vous recommandons d'exporter régulièrement vos données (bouton « Exporter mes données » dans votre profil) et de conserver vos photos d'origine.</li>
+    </ul>
+
+    <h3>8. Responsabilité</h3>
+    <p>L'Éditeur n'est pas responsable du contenu que vous publiez ensuite sur vos réseaux sociaux, ni des règles ou changements des plateformes concernées. Dans les limites permises par la loi, sa responsabilité ne couvre pas les dommages indirects (perte de chiffre d'affaires, d'audience, d'opportunité) et, sauf faute lourde ou dolosive, est limitée aux dommages directs et prévisibles. Ces limites ne s'appliquent pas lorsque la loi l'interdit, notamment à l'égard des consommateurs.</p>
+
+    <h3>9. Suspension et fin du compte</h3>
+    <ul>
+      <li><strong>Vous</strong> pouvez supprimer votre compte à tout moment depuis votre profil (« Supprimer mon compte ») : vos données sont alors effacées.</li>
+      <li><strong>L'Éditeur</strong> peut suspendre ou fermer un compte en cas de manquement à ces CGU (contenu illicite, tentative d'intrusion, abus), après information lorsque c'est possible.</li>
+    </ul>
+
+    <h3>10. Données personnelles</h3>
+    <p>Le traitement de vos données est décrit dans la <a href="#/confidentialite">politique de confidentialité</a>. Vous y trouverez aussi vos droits (accès, rectification, effacement, portabilité) et la manière de les exercer.</p>
+
+    <h3>11. Modification des CGU</h3>
+    <p>Les CGU peuvent évoluer, notamment en cas de nouvelle fonctionnalité ou d'évolution légale. La date de dernière mise à jour figure ci-dessous. En cas de changement important, nous vous en informerons dans l'application ou par e-mail ; continuer à utiliser l'application après cette information vaut acceptation.</p>
+
+    <h3>12. Droit applicable et litiges</h3>
+    <p>Les CGU sont soumises au droit français. En cas de difficulté, contactez-nous d'abord à <a href="mailto:${h(L.email)}">${h(L.email)}</a> pour trouver une solution amiable. À défaut, les tribunaux français seront compétents, sous réserve des règles impératives protégeant les consommateurs.</p>
+
+    <p class="maj">Dernière mise à jour : ${h(L.cguUpdated)}</p>`;
+}
+
+function renderTermsGate(){
+  app.innerHTML = `
+    <header class="topbar"><a href="#/" class="brand"><img src="${LOGO_DATA_URI}" alt="MADE"><span>MADE planificateur</span></a></header>
+    <div class="card-box">
+      <h2 style="margin-top:0;color:var(--green-dark);">Une dernière étape</h2>
+      <p style="font-size:14px;line-height:1.6;">Nous avons ajouté des <strong>conditions générales d'utilisation</strong> et une <strong>politique de confidentialité</strong>. Merci de les lire et de les accepter pour continuer à utiliser l'application. Vos données et vos fiches ne changent pas.</p>
+      <div id="terms-msg"></div>
+      <label class="consent">
+        <input type="checkbox" id="terms-check">
+        <span>J'ai lu et j'accepte les <a href="#/cgu" target="_blank" rel="noopener">conditions générales d'utilisation</a> et la <a href="#/confidentialite" target="_blank" rel="noopener">politique de confidentialité</a>.</span>
+      </label>
+      <button class="btn gold" id="terms-ok" style="width:100%;margin-bottom:12px;" disabled>Accepter et continuer</button>
+      <button class="btn outline" id="terms-logout" style="width:100%;">Se déconnecter</button>
+    </div>`;
+  const chk = document.getElementById("terms-check"), ok = document.getElementById("terms-ok");
+  chk.addEventListener("change", () => { ok.disabled = !chk.checked; });
+  ok.addEventListener("click", async () => {
+    if (!chk.checked) return;
+    ok.disabled = true;
+    const now = new Date().toISOString();
+    const { error } = await supabaseClient.auth.updateUser({ data: { terms_accepted_at: now, privacy_accepted_at: now } });
+    if (error) {
+      ok.disabled = false;
+      document.getElementById("terms-msg").innerHTML = `<div class="error-msg">${h(friendlyError(error.message))}</div>`;
+      return;
+    }
+    state.termsOkFor = state.session.user.id;
+    route();
+  });
+  document.getElementById("terms-logout").addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+    state.session = null; state.profile = null; state.currentClientId = null;
+    location.hash = "#/";
+    route();
+  });
+}
+
 function renderLegal(kind){
   const loggedIn = !!(state.session && state.profile);
   const head = loggedIn
     ? topbarHTML()
     : `<header class="topbar"><a href="#/" class="brand"><img src="${LOGO_DATA_URI}" alt="MADE"><span>MADE planificateur</span></a></header>`;
-  const isPrivacy = kind === "privacy";
+  const TITLES = { mentions: "Mentions légales", privacy: "Politique de confidentialité", cgu: "Conditions générales d'utilisation" };
+  const BODY = { mentions: legalMentionsHTML, privacy: legalPrivacyHTML, cgu: legalCguHTML };
+  const LINKS = { mentions: ["#/mentions-legales", "Mentions légales"], privacy: ["#/confidentialite", "Politique de confidentialité"], cgu: ["#/cgu", "Conditions d'utilisation"] };
+  const others = Object.keys(LINKS).filter(k => k !== kind).map(k => `<a href="${LINKS[k][0]}">${LINKS[k][1]}</a>`).join(" · ");
   app.innerHTML = head + `
     <div class="page-title-row">
       <button class="back-btn" onclick="history.length > 1 ? history.back() : (location.hash = '#/')" aria-label="Retour">‹</button>
-      <h2 style="text-transform:none;">${isPrivacy ? "Politique de confidentialité" : "Mentions légales"}</h2>
+      <h2 style="text-transform:none;">${TITLES[kind]}</h2>
     </div>
-    <div class="card-box legal">${isPrivacy ? legalPrivacyHTML() : legalMentionsHTML()}</div>
-    <p class="auth-legal">
-      ${isPrivacy ? `<a href="#/mentions-legales">Mentions légales</a>` : `<a href="#/confidentialite">Politique de confidentialité</a>`}
-    </p>`;
+    <div class="card-box legal">${BODY[kind]()}</div>
+    <p class="auth-legal">${others}</p>`;
   window.scrollTo(0, 0);
 }
 
@@ -2197,6 +2305,7 @@ function renderProfile(){
         <p>Téléchargez une copie de toutes vos données (profil, clients, fiches), ou supprimez définitivement votre compte.</p>
         <div class="data-links">
           <a href="#/confidentialite" target="_blank" rel="noopener">Politique de confidentialité</a>
+          <a href="#/cgu" target="_blank" rel="noopener">Conditions d'utilisation</a>
           <a href="#/mentions-legales" target="_blank" rel="noopener">Mentions légales</a>
         </div>
         <button class="btn outline" id="export-btn" style="width:100%;margin-bottom:18px;">⬇ Exporter mes données</button>
