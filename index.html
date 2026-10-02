@@ -156,15 +156,16 @@
   .brand img{width:38px;height:38px;object-fit:contain;}
   .brand span{font-weight:800;color:var(--green-dark);font-size:17px;letter-spacing:.2px;}
   .home-brand{display:flex;align-items:center;gap:12px;background:none;border:none;padding:0;cursor:pointer;text-align:left;font-family:inherit;min-width:0;}
-  .hb-badges{position:relative;width:66px;height:60px;flex:none;}
-  .hb-logo{position:absolute;left:0;top:0;width:56px;height:56px;border-radius:50%;object-fit:contain;padding:4px;background:#fff;box-shadow:var(--shadow);border:2px solid var(--white);box-sizing:border-box;}
-  .hb-avatar{position:absolute;right:0;bottom:0;width:34px;height:34px;border-radius:50%;object-fit:cover;background:var(--gold-light);border:2.5px solid var(--white);box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:var(--green-dark);box-shadow:0 1px 4px rgba(0,0,0,.25);}
+  .hb-badges{position:relative;width:58px;height:54px;flex:none;}
+  .hb-logo{position:absolute;left:0;top:0;width:48px;height:48px;border-radius:50%;object-fit:contain;padding:3px;background:#fff;box-shadow:var(--shadow);border:2px solid var(--white);box-sizing:border-box;}
+  .hb-avatar{position:absolute;right:0;bottom:0;width:28px;height:28px;border-radius:50%;object-fit:cover;background:var(--gold-light);border:2.5px solid var(--white);box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:var(--green-dark);box-shadow:0 1px 4px rgba(0,0,0,.25);}
   .hb-text{display:flex;flex-direction:column;min-width:0;line-height:1.25;}
-  .hb-title{font-weight:800;color:var(--green-dark);font-size:15px;white-space:nowrap;letter-spacing:.2px;}
+  .hb-title{font-weight:800;color:var(--green-dark);font-size:14px;line-height:1.15;overflow-wrap:anywhere;letter-spacing:.2px;}
   .hb-name{font-weight:600;color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .home-brand{flex:1 1 auto;}
-  .hb-actions{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:0 1 auto;min-width:0;max-width:42%;}
-  .hb-btn{padding:6px 10px !important;font-size:12.5px !important;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:auto !important;flex:none;}
+  .home-brand{flex:1 1 0;min-width:0;gap:8px !important;}
+  .hb-text{flex:1 1 0;min-width:0;}
+  .hb-actions{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:0 1 auto;min-width:0;max-width:40%;}
+  .hb-btn{padding:5px 8px !important;font-size:12px !important;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:auto !important;flex:none;}
   header.topbar:has(.home-brand){flex-wrap:nowrap;}
   .profile-chip{
     display:flex;align-items:center;gap:10px;background:var(--white);
