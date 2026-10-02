@@ -156,12 +156,16 @@
   .brand img{width:38px;height:38px;object-fit:contain;}
   .brand span{font-weight:800;color:var(--green-dark);font-size:17px;letter-spacing:.2px;}
   .home-brand{display:flex;align-items:center;gap:12px;background:none;border:none;padding:0;cursor:pointer;text-align:left;font-family:inherit;min-width:0;}
-  .hb-badges{position:relative;width:70px;height:62px;flex:none;}
+  .hb-badges{position:relative;width:66px;height:60px;flex:none;}
   .hb-logo{position:absolute;left:0;top:0;width:56px;height:56px;border-radius:50%;object-fit:contain;padding:4px;background:#fff;box-shadow:var(--shadow);border:2px solid var(--white);box-sizing:border-box;}
   .hb-avatar{position:absolute;right:0;bottom:0;width:34px;height:34px;border-radius:50%;object-fit:cover;background:var(--gold-light);border:2.5px solid var(--white);box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:var(--green-dark);box-shadow:0 1px 4px rgba(0,0,0,.25);}
   .hb-text{display:flex;flex-direction:column;min-width:0;line-height:1.25;}
-  .hb-title{font-weight:800;color:var(--green-dark);font-size:17px;letter-spacing:.2px;}
-  .hb-name{font-weight:600;color:var(--muted);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46vw;}
+  .hb-title{font-weight:800;color:var(--green-dark);font-size:15px;white-space:nowrap;letter-spacing:.2px;}
+  .hb-name{font-weight:600;color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .home-brand{flex:1 1 auto;}
+  .hb-actions{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:0 1 auto;min-width:0;max-width:42%;}
+  .hb-btn{padding:6px 10px !important;font-size:12.5px !important;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:auto !important;flex:none;}
+  header.topbar:has(.home-brand){flex-wrap:nowrap;}
   .profile-chip{
     display:flex;align-items:center;gap:10px;background:var(--white);
     border-radius:999px;padding:6px 14px 6px 6px;box-shadow:var(--shadow);cursor:pointer;border:none;
@@ -1086,9 +1090,9 @@ function topbarHTML(){
           <span class="hb-name">${h(name)}</span>
         </span>
       </button>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        ${state.profile?.is_cm ? `<button class="btn outline" style="padding:8px 14px;" onclick="location.hash='#/clients'" title="Changer de calendrier (client)">🗂 ${state.currentClientId ? h(state.currentClientName || "Client") : "Mon calendrier"} ▾</button>` : ""}
-        ${state.profile?.is_admin ? `<button class="btn outline" style="padding:8px 14px;" onclick="location.hash='#/admin'">Vue d'ensemble</button>` : ""}
+      <div class="hb-actions">
+        ${state.profile?.is_cm ? `<button class="btn outline hb-btn" onclick="location.hash='#/clients'" title="Changer de calendrier (client)">🗂 ${state.currentClientId ? h(state.currentClientName || "Client") : "Mon calendrier"} ▾</button>` : ""}
+        ${state.profile?.is_admin ? `<button class="btn outline hb-btn" onclick="location.hash='#/admin'">Vue d'ensemble</button>` : ""}
       </div>
     </header>
   `;
@@ -1350,14 +1354,14 @@ function tutorialHTML(){
       <img src="${LOGO_DATA_URI}" style="width:56px;height:56px;object-fit:contain;margin-bottom:10px;">
       <h2>Bienvenue sur MADE planificateur 👋</h2>
       <ul>
-        <li>Cliquez sur un <strong>jour du calendrier</strong> pour voir ou créer du contenu. La miniature et le badge coloré indiquent la plateforme et le statut.</li>
+        <li><strong>Le calendrier</strong> : touchez un jour pour voir ou créer du contenu. Le chiffre sur une case = nombre de fiches ce jour-là ; les petits points = les autres statuts présents le même jour.</li>
         <li>Couleurs : <strong style="color:var(--orange);">orange</strong> à faire, <strong style="color:#9a7400;">jaune</strong> programmé, <strong style="color:var(--vert-ok);">vert</strong> posté.</li>
-        <li>Les boutons <strong>Mois / Quinzaine / Semaine</strong> changent la vue : en semaine et quinzaine, les photos s'affichent en plus grand.</li>
-        <li>En haut du calendrier : <strong>Aujourd'hui</strong> pour revenir au mois en cours, <strong>À faire</strong> pour voir toutes vos tâches non terminées (à cocher dans chaque fiche), <strong>Corbeille</strong> pour restaurer une fiche supprimée par erreur.</li>
-        <li>Dans une fiche : plusieurs photos possibles, glissez pour les faire défiler, remplacez-les individuellement, et le bouton à côté de la plateforme ouvre directement votre page sur ce réseau.</li>
-        <li><strong>Glisser-déposer</strong> : maintenez le doigt sur une fiche puis glissez-la sur un autre jour pour la déplacer (un message permet d'annuler).</li>
-        <li>Chaque fiche peut être <strong>dupliquée</strong>, <strong>déplacée</strong> à une autre date, ou mise à la <strong>corbeille</strong> (récupérable une semaine).</li>
-        <li>Votre nom/photo en haut à droite ouvrent votre profil : photo (galerie ou appareil photo), liens de vos réseaux sociaux, mot de passe, déconnexion.</li>
+        <li><strong>Mois / Quinzaine / Semaine</strong> changent la vue : en semaine et quinzaine, les photos s'affichent en plus grand.</li>
+        <li><strong>Aujourd'hui</strong> revient au mois en cours, <strong>À faire</strong> liste toutes vos tâches non terminées, <strong>Corbeille</strong> restaure une fiche supprimée par erreur (récupérable une semaine), la loupe <strong>🔍</strong> cherche dans vos fiches.</li>
+        <li><strong>Déplacer une fiche</strong> : maintenez le doigt dessus, puis glissez-la sur un autre jour (un message permet d'annuler).</li>
+        <li><strong>Dans une fiche</strong> : plusieurs photos (glissez pour les faire défiler), liste de tâches à cocher, bouton vers votre page sur le réseau choisi. Vous pouvez aussi la <strong>dupliquer</strong>, la <strong>déplacer</strong> ou la mettre à la <strong>corbeille</strong>.</li>
+        <li><strong>En haut</strong> : touchez le logo et votre photo pour ouvrir votre profil (photo, réseaux sociaux, mot de passe, thème clair/sombre, déconnexion). Le bouton à droite permet de changer de calendrier si vous gérez plusieurs clients.</li>
+        <li>Besoin de revoir ces explications ? Profil → <strong>Revoir le tutoriel</strong>.</li>
       </ul>
       <button class="btn gold" style="width:100%;" id="tutorial-close-btn">Compris, on y va !</button>
     </div>
@@ -1428,8 +1432,7 @@ function homeToolbarHTML(){
       <span><span class="dot" style="background:var(--orange)"></span> À faire</span>
       <span><span class="dot" style="background:var(--yellow)"></span> Programmé</span>
       <span><span class="dot" style="background:var(--vert-ok)"></span> Posté</span>
-    </div>
-    <div class="legend-note">Le chiffre sur une case = nombre de fiches ce jour-là. Les petits points = autres statuts présents le même jour.<br>💡 Pour déplacer une fiche : maintenez le doigt dessus, puis glissez-la sur un autre jour.</div>`;
+    </div>`;
 }
 
 function setViewMode(mode){
