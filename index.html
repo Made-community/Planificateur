@@ -2559,6 +2559,7 @@ function legalMentionsHTML(){
     <ul>
       <li><strong>Application web :</strong> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, États-Unis (cloudflare.com).</li>
       <li><strong>Base de données, authentification et fichiers :</strong> Supabase, Inc. (supabase.com)${L.dbRegion ? `, données hébergées dans ${h(L.dbRegion)}` : ""}.</li>
+      <li><strong>Envoi des e-mails (confirmation de compte, réinitialisation du mot de passe) :</strong> Resend, Inc., États-Unis (resend.com). Il reçoit votre adresse e-mail et le contenu du message pour l'acheminer.</li>
     </ul>
 
     <h3>Propriété intellectuelle</h3>
@@ -2602,7 +2603,7 @@ function legalPrivacyHTML(){
     <ul>
       <li><strong>Vous seul·e</strong> voyez vos fiches, vos photos et vos clients : chaque compte est cloisonné.</li>
       <li>Les administrateurs de ${h(L.name)} voient la liste des comptes (nom, e-mail, photo de profil, espace de stockage utilisé), pas le contenu de vos fiches dans l'application.</li>
-      <li><strong>Nos prestataires techniques</strong> traitent les données pour notre compte : Supabase (base de données, authentification, stockage des fichiers) et Cloudflare (hébergement de l'application, vérification anti-robot). Des bibliothèques d'affichage sont aussi chargées depuis les services jsDelivr et cdnjs (Cloudflare), ce qui leur transmet votre adresse IP comme pour tout site web.</li>
+      <li><strong>Nos prestataires techniques</strong> traitent les données pour notre compte : Supabase (base de données, authentification, stockage des fichiers), Cloudflare (hébergement de l'application, vérification anti-robot) et Resend (envoi des e-mails de connexion). Des bibliothèques d'affichage sont aussi chargées depuis les services jsDelivr et cdnjs (Cloudflare), ce qui leur transmet votre adresse IP comme pour tout site web.</li>
     </ul>
     <p>Si vous êtes Community Manager, vous ajoutez des contenus concernant vos clients : vous restez responsable de disposer des droits nécessaires sur ces contenus (par exemple sur les photos où des personnes sont identifiables).</p>
 
