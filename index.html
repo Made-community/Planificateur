@@ -409,6 +409,7 @@ if (!window.MADE_CONFIG.SUPABASE_URL || window.MADE_CONFIG.SUPABASE_URL.includes
 // Lien reçu par e-mail : Supabase place les jetons dans l'adresse (#access_token=…&type=recovery)
 const AUTH_HASH = location.hash || "";
 const RECOVERY_LINK = /[#&]access_token=/.test(AUTH_HASH) && /[#&]type=recovery/.test(AUTH_HASH);
+const SIGNUP_LINK = /[#&]access_token=/.test(AUTH_HASH) && /[#&]type=(signup|email_change|invite)/.test(AUTH_HASH);
 const AUTH_LINK_ERROR = /[#&]error=/.test(AUTH_HASH) ? "expired" : "";
 const supabaseClient = window.supabase.createClient(
   window.MADE_CONFIG.SUPABASE_URL,
@@ -435,6 +436,8 @@ const MONTHS_FR = ["janvier","février","mars","avril","mai","juin","juillet","a
 const DOW_FR = ["L","M","M","J","V","S","D"];
 
 let state = {
+  emailConfirmed: false, // true = l'utilisateur vient de cliquer sur le lien de confirmation de son inscription
+  loginNotice: "",      // message affiché une fois sur la page de connexion
   recovery: RECOVERY_LINK, // true = l'utilisateur arrive depuis le lien « mot de passe oublié »
   session: null,
   profile: null,
@@ -623,11 +626,18 @@ async function init(){
   setupPwa();
   const { data } = await supabaseClient.auth.getSession();
   state.session = data.session;
-  if (RECOVERY_LINK || AUTH_LINK_ERROR) {
+  if (RECOVERY_LINK || SIGNUP_LINK || AUTH_LINK_ERROR) {
     // on retire les jetons de l'adresse affichée (sécurité et esthétique)
     try { history.replaceState(null, "", location.pathname + location.search); } catch(e) {}
   }
   if (!state.session) state.recovery = false;
+  if (SIGNUP_LINK && state.session) {
+    // Le lien de confirmation ouvre une session : on la ferme pour afficher la page de confirmation,
+    // la personne se connecte ensuite elle-même avec son mot de passe.
+    state.emailConfirmed = true;
+    try { await supabaseClient.auth.signOut(); } catch(e) {}
+    state.session = null; state.profile = null;
+  }
   supabaseClient.auth.onAuthStateChange((event, session) => {
     state.session = session;
     if (event === "PASSWORD_RECOVERY") { state.recovery = true; route(); }
@@ -642,6 +652,7 @@ async function route(){
   if (hash === "#/mentions-legales") return renderLegal("mentions");
   if (hash === "#/confidentialite") return renderLegal("privacy");
   if (hash === "#/cgu") return renderLegal("cgu");
+  if (state.emailConfirmed && !state.session) return renderEmailConfirmed();
   if (state.recovery && state.session) return renderResetPassword();
   if (!state.session) {
     if (hash.startsWith("#/signup")) return renderSignup();
@@ -775,9 +786,12 @@ function renderLogin(){
   document.getElementById("forgot-link").addEventListener("click", () => {
     state.prefillEmail = document.getElementById("li-email").value.trim(); // on garde l'e-mail déjà saisi
   });
-  if (AUTH_LINK_ERROR && !state.authNoticeShown) {
+  if (state.loginNotice) {
+    document.getElementById("auth-msg").innerHTML = `<div class="ok-msg">${h(state.loginNotice)}</div>`;
+    state.loginNotice = "";
+  } else if (AUTH_LINK_ERROR && !state.authNoticeShown) {
     state.authNoticeShown = true;
-    document.getElementById("auth-msg").innerHTML = `<div class="error-msg">Ce lien a expiré ou a déjà été utilisé. Cliquez sur « Mot de passe oublié ? » pour en recevoir un nouveau.</div>`;
+    document.getElementById("auth-msg").innerHTML = `<div class="error-msg">Ce lien a expiré ou a déjà été utilisé. Si vous venez de créer votre compte, essayez simplement de vous connecter : votre adresse est peut-être déjà confirmée. Sinon, cliquez sur « Mot de passe oublié ? » pour recevoir un nouveau lien.</div>`;
   }
   document.getElementById("login-form").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -867,6 +881,24 @@ function renderForgotPassword(){
   });
 }
 
+function renderEmailConfirmed(){
+  app.innerHTML = `
+    <div class="auth-screen">
+      <img src="${LOGO_DATA_URI}" class="auth-logo" alt="MADE Community">
+      <h1 class="auth-title">Adresse e-mail confirmée ✅</h1>
+      <p class="auth-sub">Merci ! Votre compte est maintenant activé.</p>
+      <div class="card-box auth-card">
+        <div class="ok-msg">Votre adresse e-mail a bien été confirmée. Vous pouvez maintenant vous connecter avec votre adresse e-mail et votre mot de passe.</div>
+        <button class="btn gold" type="button" style="width:100%;" id="confirmed-login-btn">Se connecter</button>
+      </div>
+    </div>`;
+  document.getElementById("confirmed-login-btn").addEventListener("click", () => {
+    state.emailConfirmed = false;
+    location.hash = "#/";
+    route();
+  });
+}
+
 function renderResetPassword(){
   app.innerHTML = `
     <div class="auth-screen">
@@ -924,13 +956,15 @@ function renderResetPassword(){
         : (/current password/i.test(m) ? "Impossible de changer le mot de passe avec ce lien. Refaites une demande via « Mot de passe oublié ? »." : h(friendlyError(m)))}</div>`;
       return;
     }
-    // Par sécurité : les autres appareils connectés à ce compte sont déconnectés
-    try { await supabaseClient.auth.signOut({ scope: "others" }); } catch(err) {}
+    // Par sécurité : tous les appareils connectés à ce compte sont déconnectés, y compris celui-ci.
+    // La personne est renvoyée vers la page de connexion avec son nouveau mot de passe.
+    try { await supabaseClient.auth.signOut({ scope: "global" }); }
+    catch(err) { try { await supabaseClient.auth.signOut(); } catch(e2) {} }
     state.recovery = false;
-    if (!state.profile) { try { await loadProfile(); } catch(err) {} }
+    state.session = null; state.profile = null;
+    state.loginNotice = "Votre mot de passe a bien été modifié. Connectez-vous avec votre nouveau mot de passe.";
     location.hash = "#/";
     route();
-    notify("Mot de passe modifié. Vous êtes connecté.");
   });
 }
 
