@@ -21,7 +21,21 @@
   window.MADE_CONFIG = {
     SUPABASE_URL: "https://ompimzdoerosvoqtjqkd.supabase.co",
     SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tcGltemRvZXJvc3ZvcXRqcWtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4NDM0NjYsImV4cCI6MjEwNTQxOTQ2Nn0.Q-2hdPl4ZqQJxcXOKP5ls2R5DTzlUBc78Jnd6ryOkPM",
-    TURNSTILE_SITE_KEY: "0x4AAAAAAFJC7TkzUd5ARxLz" // Cloudflare Turnstile (clé publique)
+    TURNSTILE_SITE_KEY: "0x4AAAAAAFJC7TkzUd5ARxLz", // Cloudflare Turnstile (clé publique)
+
+    // ---- Abonnement payant (Stripe) ----
+    // Laissez false tant que Stripe n'est pas entièrement configuré : personne n'est alors bloqué.
+    BILLING_ENABLED: false,
+    // Formules affichées sur la page d'abonnement. Les prix doivent correspondre à ceux créés dans Stripe.
+    YEARLY_NOTE: "2 mois offerts",
+    PLANS: [
+      { id: "basic", name: "Basique", monthly: "7,99 € / mois", yearly: "79,99 € / an",
+        features: ["1 fiche par jour", "1 photo par fiche", "Calendrier, tâches, corbeille, recherche"] },
+      { id: "pro", name: "Pro", monthly: "11,99 € / mois", yearly: "119,99 € / an",
+        features: ["Fiches illimitées", "Photos illimitées par fiche", "Tout ce qui est inclus dans Basique"] },
+      { id: "cm", name: "Community Manager", monthly: "22,99 € / mois", yearly: "229,99 € / an",
+        features: ["Tout Pro, sans limite", "Clients illimités, chacun avec son calendrier", "Export PDF des fiches pour vos clients"] }
+    ]
   };
 </script>
 
@@ -287,6 +301,23 @@
   mark{background:var(--gold-light);color:#232e15;border-radius:3px;padding:0 1px;}
   .toolbar-row{display:flex;gap:6px;flex-wrap:nowrap;margin-bottom:14px;}
   .toolbar-row .btn{flex:1 1 auto;min-width:0;padding:8px 6px !important;font-size:13.5px;white-space:nowrap;}
+  .trial-banner{display:block;background:var(--gold-light);color:var(--on-gold,#232e15);border-radius:10px;padding:9px 12px;font-size:13px;font-weight:600;text-align:center;margin:4px 0 12px;text-decoration:none;}
+  .trial-banner.warn{background:#f3c9c0;color:#5a1d12;}
+  .sub-wrap{max-width:480px;margin:0 auto;padding-bottom:30px;}
+  .sub-title{color:var(--green-dark);text-transform:none;font-size:21px;margin:14px 0;}
+  .sub-h3{margin:0 0 12px;color:var(--green-dark);font-size:16px;}
+  .sub-muted{color:var(--muted);font-size:13px;margin:8px 0 0;}
+  .sub-status p{margin:0;}
+  .sub-wrap .card-box{margin-bottom:14px;}
+  .interval-switch{margin-bottom:12px;}
+  .plan-price{display:block;font-weight:700;margin:2px 0 4px;}
+  .plan-feats{margin:4px 0 0;padding-left:18px;font-size:13px;color:var(--muted);line-height:1.5;}
+  .photo-add-tile.locked{cursor:default;font-size:13px;text-align:center;line-height:1.5;}
+  .photo-add-tile.locked a{color:var(--green);text-decoration:underline;}
+  .plan-opt{display:flex;gap:12px;align-items:flex-start;border:1.5px solid var(--line2);border-radius:12px;padding:12px 14px;margin-bottom:10px;cursor:pointer;line-height:1.5;}
+  .plan-opt:has(input:checked){border-color:var(--gold);background:var(--gold-light);color:var(--on-gold,#232e15);}
+  .plan-opt input{margin-top:4px;}
+  .plan-note{font-style:normal;font-size:12px;background:var(--gold);color:var(--on-gold,#232e15);border-radius:999px;padding:2px 8px;margin-left:6px;}
   .legend-note{font-size:12px;color:var(--muted);margin:-6px 0 14px;line-height:1.5;}
   .fab{position:fixed;right:18px;bottom:22px;width:56px;height:56px;border-radius:50%;border:none;
     background:var(--gold);color:var(--on-gold);font-size:30px;font-weight:700;line-height:1;cursor:pointer;
@@ -436,6 +467,9 @@ const MONTHS_FR = ["janvier","février","mars","avril","mai","juin","juillet","a
 const DOW_FR = ["L","M","M","J","V","S","D"];
 
 let state = {
+  access: null,          // droits d'accès (abonnement / essai) renvoyés par my_access()
+  accessFor: null,
+  accessAt: 0,
   emailConfirmed: false, // true = l'utilisateur vient de cliquer sur le lien de confirmation de son inscription
   loginNotice: "",      // message affiché une fois sur la page de connexion
   recovery: RECOVERY_LINK, // true = l'utilisateur arrive depuis le lien « mot de passe oublié »
@@ -480,7 +514,17 @@ function safeHttpUrl(u){
     return (url.protocol === "https:" || url.protocol === "http:") ? url.href : null;
   } catch(e) { return null; }
 }
+const PLAN_ERRORS = {
+  PLAN_LIMIT_CARDS: "Votre formule est limitée à 1 fiche par jour. Passez à la formule Pro pour en créer autant que vous voulez (page Mon abonnement).",
+  PLAN_LIMIT_PHOTOS: "Votre formule inclut 1 photo par fiche. Passez à la formule Pro pour en ajouter davantage (page Mon abonnement).",
+  PLAN_EXPIRED: "Votre essai gratuit est terminé. Abonnez-vous pour continuer (page Mon abonnement).",
+  PLAN_CM_ONLY: "La gestion de clients est réservée à la formule Community Manager (page Mon abonnement)."
+};
 function friendlyError(message){
+  for (const k in PLAN_ERRORS) if (String(message || "").includes(k)) return PLAN_ERRORS[k];
+  return friendlyErrorBase(message);
+}
+function friendlyErrorBase(message){
   if (message === "Failed to fetch") {
     return "Impossible de joindre Supabase. Vérifiez : 1) que SUPABASE_URL et SUPABASE_ANON_KEY en haut du fichier sont bien ceux de votre projet, 2) que votre projet Supabase n'est pas en pause, 3) votre connexion internet.";
   }
@@ -622,8 +666,258 @@ function setupPwa(){
   }
 }
 
+/* ---------------- ABONNEMENT ---------------- */
+function billingOn(){ return window.MADE_CONFIG.BILLING_ENABLED === true; }
+
+// Interroge la base : le compte a-t-il droit à l'outil ? (essai, abonnement, administrateur)
+// En cas d'erreur technique, on ne bloque personne.
+async function loadAccess(force){
+  if (!billingOn() || !state.session) { state.access = { access: true, reason: "off" }; return state.access; }
+  const uid = state.session.user.id;
+  const fresh = state.access && state.accessFor === uid && (Date.now() - state.accessAt) < 5 * 60 * 1000;
+  if (!force && fresh) return state.access;
+  try {
+    const { data, error } = await supabaseClient.rpc("my_access");
+    if (error || !data) throw error || new Error("vide");
+    state.access = data; state.accessFor = uid; state.accessAt = Date.now();
+    if (billingOn() && data.entitlements && !data.entitlements.can_clients) { state.currentClientId = null; state.currentClientName = null; }
+  } catch (e) {
+    state.access = { access: true, reason: "error" }; state.accessFor = null;
+  }
+  return state.access;
+}
+
+function renderPlanLimit(kind, ds){
+  const msg = {
+    cards: "Votre formule est limitée à 1 fiche par jour. Passez à la formule Pro (ou Community Manager) pour créer autant de fiches que vous voulez.",
+    expired: "Votre essai gratuit est terminé. Abonnez-vous pour continuer à créer des fiches."
+  }[kind] || "Cette fonction n'est pas incluse dans votre formule.";
+  app.innerHTML = topbarHTML() + `
+    <div class="page-title-row">
+      <button class="back-btn" onclick="location.hash='#/jour/${ds}'" aria-label="Retour">‹</button>
+      <h2>${formatFrDate(ds)}</h2>
+    </div>
+    <div class="card-box" style="text-align:center;">
+      <p style="margin:0 0 14px;">🔒 ${h(msg)}</p>
+      <button class="btn gold" style="width:100%;margin-bottom:8px;" onclick="location.hash='#/abonnement'">Voir les formules</button>
+      <button class="btn outline" style="width:100%;" onclick="location.hash='#/jour/${ds}'">Retour à la journée</button>
+    </div>`;
+}
+
+function planById(id){ return (window.MADE_CONFIG.PLANS || []).find(p => p.id === id) || null; }
+
+// Droits de la formule (illimité si l'abonnement n'est pas activé)
+function ent(){
+  const e = billingOn() && state.access && state.access.entitlements;
+  if (!e) return { maxCards: null, maxPhotos: null, clients: !!state.profile?.is_cm };
+  return { maxCards: e.max_cards_per_day, maxPhotos: e.max_photos_per_card, clients: !!e.can_clients };
+}
+function isCM(){ return ent().clients; }
+
+function fmtDateFr(iso){
+  try { return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }); }
+  catch(e) { return ""; }
+}
+
+function accessSummaryText(a){
+  if (!a) return "";
+  const tierName = (planById(a.tier) || {}).name || "";
+  const plan = [tierName, a.billing_interval === "year" ? "annuel" : (a.billing_interval === "month" ? "mensuel" : "")].filter(Boolean).join(" ");
+  if (a.reason === "admin") return "Compte administrateur : accès offert.";
+  if (a.reason === "trial") return `Essai gratuit : il vous reste ${a.trial_days_left} jour${a.trial_days_left > 1 ? "s" : ""} (jusqu'au ${fmtDateFr(a.trial_ends_at)}).`;
+  if (a.reason === "subscribed") {
+    if (a.status === "past_due") return "Le dernier paiement a échoué. Mettez à jour votre moyen de paiement pour garder l'accès.";
+    if (a.cancel_at_period_end) return `Abonnement résilié : votre accès reste ouvert jusqu'au ${fmtDateFr(a.current_period_end)}.`;
+    if (a.status === "trialing") return `Abonnement ${plan} enregistré. Le premier paiement aura lieu à la fin de l'essai${a.current_period_end ? " (" + fmtDateFr(a.current_period_end) + ")" : ""}.`;
+    return `Abonnement ${plan} actif${a.current_period_end ? ", prochain renouvellement le " + fmtDateFr(a.current_period_end) : ""}.`;
+  }
+  if (a.reason === "expired") return "Votre période d'essai est terminée. Abonnez-vous pour continuer à utiliser l'outil.";
+  return "";
+}
+
+function trialBannerHTML(){
+  if (!billingOn() || !state.access) return "";
+  const a = state.access;
+  if (a.reason === "trial" && a.trial_days_left <= 7) {
+    return `<a class="trial-banner" href="#/abonnement">⏳ Essai gratuit : ${a.trial_days_left} jour${a.trial_days_left > 1 ? "s" : ""} restant${a.trial_days_left > 1 ? "s" : ""} · <u>Voir les formules</u></a>`;
+  }
+  if (a.reason === "subscribed" && a.status === "past_due") {
+    return `<a class="trial-banner warn" href="#/abonnement">⚠️ Le dernier paiement a échoué · <u>Mettre à jour</u></a>`;
+  }
+  return "";
+}
+
+async function startCheckout(tier, interval, btn){
+  const msg = document.getElementById("sub-msg");
+  msg.innerHTML = "";
+  const old = btn.textContent; btn.disabled = true; btn.textContent = "Redirection vers le paiement...";
+  try {
+    const { data, error } = await supabaseClient.functions.invoke("stripe-checkout", { body: { tier, interval } });
+    if (error || !data || !data.url) throw new Error((data && data.error) || "Impossible de lancer le paiement pour le moment.");
+    location.href = data.url;
+  } catch (e) {
+    btn.disabled = false; btn.textContent = old;
+    msg.innerHTML = `<div class="error-msg">${h(e.message || "Impossible de lancer le paiement pour le moment.")}</div>`;
+  }
+}
+
+async function openBillingPortal(btn){
+  const msg = document.getElementById("sub-msg");
+  msg.innerHTML = "";
+  const old = btn.textContent; btn.disabled = true; btn.textContent = "Ouverture...";
+  try {
+    const { data, error } = await supabaseClient.functions.invoke("stripe-portal", { body: {} });
+    if (error || !data || !data.url) throw new Error((data && data.error) || "Impossible d'ouvrir la gestion de l'abonnement pour le moment.");
+    location.href = data.url;
+  } catch (e) {
+    btn.disabled = false; btn.textContent = old;
+    msg.innerHTML = `<div class="error-msg">${h(e.message || "Impossible d'ouvrir la gestion de l'abonnement pour le moment.")}</div>`;
+  }
+}
+
+/* ---------------- TRANSFERT D'UN CALENDRIER CLIENT ---------------- */
+const TRANSFER_KEY = "made_pending_transfer";
+function getPendingTransfer(){ try { return localStorage.getItem(TRANSFER_KEY) || ""; } catch(e) { return state.pendingTransfer || ""; } }
+function setPendingTransfer(t){ state.pendingTransfer = t || ""; try { if (t) localStorage.setItem(TRANSFER_KEY, t); else localStorage.removeItem(TRANSFER_KEY); } catch(e) {} }
+async function fnErrorMessage(error, data, fallback){
+  if (data && data.error) return data.error;
+  try { const j = await error.context.json(); if (j && j.error) return j.error; } catch(e) {}
+  return fallback;
+}
+
+async function renderTransfer(token){
+  const shell = inner => { app.innerHTML = `<header class="topbar"><a href="#/" class="brand"><img src="${LOGO_DATA_URI}" alt="MADE"><span>MADE planificateur</span></a></header><div class="sub-wrap">${inner}</div>`; window.scrollTo(0, 0); };
+  shell(`<div class="center"><div class="spinner"></div></div>`);
+  const { data: pv, error } = await supabaseClient.rpc("transfer_preview", { p_token: token });
+  const done = (title, text, extra) => shell(`<h2 class="sub-title">${h(title)}</h2><div class="card-box"><p>${h(text)}</p>${extra || ""}<button class="btn gold" style="width:100%;margin-top:10px;" onclick="location.hash='#/'">Aller à mon calendrier</button></div>`);
+  if (error || !pv) { return done("Transfert indisponible", "Impossible de vérifier ce transfert pour le moment. Réessayez dans un instant."); }
+  if (!pv.valid) {
+    if (pv.reason === "wrong_account") {
+      shell(`<h2 class="sub-title">Ce transfert est pour une autre adresse</h2>
+        <div class="card-box"><p>Cette invitation a été envoyée à <strong>${h(pv.email_hint || "une autre adresse e-mail")}</strong>. Vous êtes connecté·e avec <strong>${h(state.session.user.email)}</strong>.</p>
+        <button class="btn gold" id="tr-logout" style="width:100%;margin-top:10px;">Me déconnecter et utiliser la bonne adresse</button></div>`);
+      document.getElementById("tr-logout").addEventListener("click", async () => {
+        try { await supabaseClient.auth.signOut(); } catch(e) {}
+        state.session = null; state.profile = null; state.access = null; route();
+      });
+      return;
+    }
+    setPendingTransfer("");
+    const msgs = { expired: "Ce lien a expiré (14 jours). Demandez un nouveau transfert à votre Community Manager.", cancelled: "Ce transfert a été annulé par votre Community Manager.", completed: "Ce transfert a déjà été accepté.", unknown: "Ce lien de transfert n'est pas valide." };
+    return done("Transfert indisponible", msgs[pv.reason] || msgs.unknown);
+  }
+  setPendingTransfer(token);
+  let subOk = true;
+  if (billingOn()) { const a = await loadAccess(true); subOk = a.reason === "admin" || a.reason === "subscribed"; }
+  shell(`
+    <h2 class="sub-title">Reprendre votre calendrier</h2>
+    <div id="tr-msg"></div>
+    <div class="card-box">
+      <p><strong>${h(pv.cm_name)}</strong> vous propose de transférer le calendrier « <strong>${h(pv.client_name)}</strong> » (fiches, tâches et photos) dans votre compte.</p>
+      <p class="sub-muted">Valable jusqu'au ${h(fmtDateFr(pv.expires_at))}. Une fois accepté, le calendrier est déplacé chez vous et n'est plus conservé par ${h(pv.cm_name)}. Les fiches seront ajoutées à votre calendrier personnel.</p>
+      ${subOk
+        ? `<button class="btn gold" id="tr-accept" style="width:100%;">Accepter le transfert</button>`
+        : `<div class="error-msg" style="margin-bottom:10px;">Pour accepter, il vous faut un abonnement (formule Basique au minimum).</div>
+           <button class="btn gold" style="width:100%;" onclick="location.hash='#/abonnement'">Choisir mon abonnement</button>
+           <p class="sub-muted" style="margin-top:8px;">Après le paiement, revenez sur cette page : l'invitation sera retrouvée automatiquement.</p>`}
+    </div>
+    <button class="btn outline" style="width:100%;margin-top:12px;" onclick="location.hash='#/'">Plus tard</button>`);
+  const ab = document.getElementById("tr-accept");
+  if (ab) ab.addEventListener("click", async () => {
+    if (!confirm("Accepter le transfert du calendrier « " + pv.client_name + " » dans votre compte ?")) return;
+    ab.disabled = true; ab.textContent = "Transfert en cours… (quelques instants)";
+    const { data, error: e2 } = await supabaseClient.functions.invoke("transfer-complete", { body: { token } });
+    if (e2 || !data || !data.ok) {
+      ab.disabled = false; ab.textContent = "Accepter le transfert";
+      document.getElementById("tr-msg").innerHTML = `<div class="error-msg">${h(await fnErrorMessage(e2, data, "Le transfert a échoué. Réessayez."))}</div>`;
+      return;
+    }
+    setPendingTransfer("");
+    done("Transfert terminé", `Le calendrier « ${pv.client_name} » est maintenant dans votre compte (${data.cards} fiche${data.cards > 1 ? "s" : ""}).`);
+  });
+}
+
+async function renderSubscription(opts){
+  opts = opts || {};
+  const q = new URLSearchParams((location.hash.split("?")[1] || ""));
+  const statut = q.get("statut");
+  const a = await loadAccess(true);
+  const C = window.MADE_CONFIG;
+  const subscribed = a.reason === "subscribed";
+  const canChoose = !subscribed || a.cancel_at_period_end;
+  const paywall = !a.access;
+  const justPaid = statut === "ok";
+  if (justPaid && !subscribed && (state.payPoll || 0) < 8) {
+    state.payPoll = (state.payPoll || 0) + 1;   // Stripe prévient la base en quelques secondes : on attend un peu
+    app.innerHTML = `<div class="auth-screen"><img src="${LOGO_DATA_URI}" class="auth-logo" alt="MADE Community"><h1 class="auth-title">Paiement en cours de validation…</h1><p class="auth-sub">Merci ! Un instant, nous activons votre abonnement.</p></div>`;
+    setTimeout(() => { if ((location.hash || "").startsWith("#/abonnement")) renderSubscription(opts); }, 1500);
+    return;
+  }
+  state.payPoll = 0;
+  app.innerHTML = `
+    <header class="topbar"><a href="#/" class="brand"><img src="${LOGO_DATA_URI}" alt="MADE"><span>MADE planificateur</span></a></header>
+    <div class="sub-wrap">
+      ${paywall ? "" : `<div class="page-title-row"><button class="back-btn" onclick="location.hash='#/'" aria-label="Retour">‹</button><h2 style="text-transform:none;">Mon abonnement</h2></div>`}
+      ${paywall ? `<h2 class="sub-title">Votre essai gratuit est terminé</h2>` : ""}
+      <div id="sub-msg">${justPaid && subscribed ? `<div class="ok-msg">Merci ! Votre abonnement est actif.</div>` : (statut === "annule" ? `<div class="error-msg">Le paiement a été annulé. Vous pouvez réessayer quand vous voulez.</div>` : "")}</div>
+      ${getPendingTransfer() ? `<a class="trial-banner" href="#/transfert/${h(getPendingTransfer())}">📨 Un calendrier vous attend · <u>Revenir au transfert</u></a>` : ""}
+      <div class="card-box sub-status">
+        <p>${h(accessSummaryText(a))}</p>
+        ${paywall ? `<p class="sub-muted">Vos fiches et vos photos sont conservées : elles seront de nouveau accessibles dès votre abonnement.</p>` : ""}
+        ${a.has_customer ? `<button class="btn outline" id="portal-btn" style="width:100%;margin-top:8px;">Gérer mon abonnement et mes factures</button>` : ""}
+      </div>
+      ${canChoose && a.reason !== "admin" ? `
+      <div class="card-box">
+        <h3 class="sub-h3">Choisissez votre formule</h3>
+        <div class="view-switch interval-switch" id="interval-switch">
+          <button type="button" class="active" data-interval="month">Mensuel</button>
+          <button type="button" data-interval="year">Annuel${C.YEARLY_NOTE ? ` · ${h(C.YEARLY_NOTE)}` : ""}</button>
+        </div>
+        ${(C.PLANS || []).map((p, i) => `
+        <label class="plan-opt">
+          <input type="radio" name="plan" value="${h(p.id)}" ${i === 0 ? "checked" : ""}>
+          <span>
+            <strong>${h(p.name)}</strong>
+            <span class="plan-price" data-m="${h(p.monthly)}" data-y="${h(p.yearly)}">${h(p.monthly)}</span>
+            <ul class="plan-feats">${(p.features || []).map(f => `<li>${h(f)}</li>`).join("")}</ul>
+          </span>
+        </label>`).join("")}
+        <label class="consent"><input type="checkbox" id="sub-cgv"><span>J'ai lu et j'accepte les <a href="#/cgv" target="_blank" rel="noopener">conditions générales de vente</a>.</span></label>
+        <button class="btn gold" id="subscribe-btn" style="width:100%;" disabled>${a.reason === "trial" ? "S'abonner (1er paiement à la fin de l'essai)" : "S'abonner"}</button>
+        <p class="sub-muted" style="margin-top:10px;">Paiement sécurisé par Stripe. Vous pouvez changer de formule ou résilier à tout moment depuis cette page.</p>
+      </div>` : ""}
+      <p class="auth-legal" style="margin-top:14px;">
+        <a href="#/cgv" target="_blank" rel="noopener">CGV</a> · <a href="#/cgu" target="_blank" rel="noopener">CGU</a> · <a href="#/confidentialite" target="_blank" rel="noopener">Confidentialité</a>
+      </p>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
+        <button class="btn outline" style="flex:1;" onclick="location.hash='#/profil'">Mon profil et mes données</button>
+        <button class="btn outline" style="flex:1;" id="sub-logout">Se déconnecter</button>
+      </div>
+    </div>`;
+  const cgv = document.getElementById("sub-cgv"), sb = document.getElementById("subscribe-btn");
+  let interval = "month";
+  document.querySelectorAll("#interval-switch button").forEach(b => b.addEventListener("click", () => {
+    interval = b.dataset.interval;
+    document.querySelectorAll("#interval-switch button").forEach(x => x.classList.toggle("active", x === b));
+    document.querySelectorAll(".plan-price").forEach(el => { el.textContent = interval === "year" ? el.dataset.y : el.dataset.m; });
+  }));
+  if (cgv && sb) {
+    cgv.addEventListener("change", () => { sb.disabled = !cgv.checked; });
+    sb.addEventListener("click", () => startCheckout(document.querySelector('input[name="plan"]:checked').value, interval, sb));
+  }
+  const pb = document.getElementById("portal-btn");
+  if (pb) pb.addEventListener("click", () => openBillingPortal(pb));
+  document.getElementById("sub-logout").addEventListener("click", async () => {
+    try { await supabaseClient.auth.signOut(); } catch(e) {}
+    state.session = null; state.profile = null; state.access = null;
+    location.hash = "#/"; route();
+  });
+  window.scrollTo(0, 0);
+}
+
 async function init(){
   setupPwa();
+  { const m = (location.hash || "").match(/^#\/transfert\/([0-9a-f]{40,})/); if (m) setPendingTransfer(m[1]); }
   const { data } = await supabaseClient.auth.getSession();
   state.session = data.session;
   if (RECOVERY_LINK || SIGNUP_LINK || AUTH_LINK_ERROR) {
@@ -640,6 +934,7 @@ async function init(){
   }
   supabaseClient.auth.onAuthStateChange((event, session) => {
     state.session = session;
+    if (!session) { state.access = null; state.accessFor = null; }
     if (event === "PASSWORD_RECOVERY") { state.recovery = true; route(); }
   });
   if (state.session) await loadProfile();
@@ -652,6 +947,7 @@ async function route(){
   if (hash === "#/mentions-legales") return renderLegal("mentions");
   if (hash === "#/confidentialite") return renderLegal("privacy");
   if (hash === "#/cgu") return renderLegal("cgu");
+  if (hash === "#/cgv") return renderLegal("cgv");
   if (state.emailConfirmed && !state.session) return renderEmailConfirmed();
   if (state.recovery && state.session) return renderResetPassword();
   if (!state.session) {
@@ -663,6 +959,23 @@ async function route(){
   // Comptes créés avant les CGU : acceptation demandée une fois
   if (state.termsOkFor !== state.session.user.id && !state.session.user.user_metadata?.terms_accepted_at) return renderTermsGate();
 
+  // Transfert de calendrier : la page s'ouvre avant la barrière d'abonnement (le client peut s'abonner depuis cette page)
+  if (hash.startsWith("#/transfert/")) {
+    const tk = hash.slice("#/transfert/".length).split("?")[0];
+    if (/^[0-9a-f]{40,}$/.test(tk)) return renderTransfer(tk);
+    location.hash = "#/"; return;
+  }
+  { const pt = getPendingTransfer();
+    if (pt && /^[0-9a-f]{40,}$/.test(pt) && !hash.startsWith("#/abonnement") && !hash.startsWith("#/cg") && !hash.startsWith("#/profil") && !state.transferSeen) {
+      state.transferSeen = true; location.hash = "#/transfert/" + pt; return;
+    } }
+  // Abonnement : sans essai ni abonnement valide, seules la page d'abonnement et le profil restent accessibles
+  if (billingOn()) {
+    await loadAccess(false);
+    if (hash.startsWith("#/abonnement")) return renderSubscription();
+    if (state.access && !state.access.access && hash !== "#/profil") return renderSubscription({ paywall: true });
+  }
+
   if (hash === "#/" || hash === "") return renderHome();
   if (hash.startsWith("#/jour/")) {
     const ds = hash.slice("#/jour/".length);
@@ -672,6 +985,12 @@ async function route(){
   if (hash.startsWith("#/fiche/nouvelle/")) {
     const ds = hash.slice("#/fiche/nouvelle/".length);
     if (!isValidDateStr(ds)) { location.hash = "#/"; return; }
+    const lim = ent().maxCards;
+    if (billingOn() && lim != null) {
+      const { count } = await scopeToCurrentCalendar(
+        supabaseClient.from("content_cards").select("id", { count: "exact", head: true }).is("deleted_at", null).eq("card_date", ds));
+      if ((count || 0) >= lim) return renderPlanLimit("cards", ds);
+    }
     return renderFiche(null, ds);
   }
   if (hash.startsWith("#/fiche/")) {
@@ -698,7 +1017,7 @@ async function loadProfile(){
     data = created;
   }
   state.profile = data;
-  if (data.is_cm) {
+  {
     try {
       const saved = localStorage.getItem(`made_current_client_${uid}`);
       if (saved) {
@@ -789,6 +1108,8 @@ function renderLogin(){
   if (state.loginNotice) {
     document.getElementById("auth-msg").innerHTML = `<div class="ok-msg">${h(state.loginNotice)}</div>`;
     state.loginNotice = "";
+  } else if (getPendingTransfer()) {
+    document.getElementById("auth-msg").innerHTML = `<div class="ok-msg">📨 Vous avez reçu un calendrier à reprendre. Connectez-vous, ou <a href="#/signup">créez votre compte</a> avec l'adresse e-mail qui a reçu l'invitation.</div>`;
   } else if (AUTH_LINK_ERROR && !state.authNoticeShown) {
     state.authNoticeShown = true;
     document.getElementById("auth-msg").innerHTML = `<div class="error-msg">Ce lien a expiré ou a déjà été utilisé. Si vous venez de créer votre compte, essayez simplement de vous connecter : votre adresse est peut-être déjà confirmée. Sinon, cliquez sur « Mot de passe oublié ? » pour recevoir un nouveau lien.</div>`;
@@ -975,7 +1296,7 @@ function renderSignup(){
       <h1 class="auth-title">Créer un compte</h1>
       <p class="auth-sub">Rejoignez MADE planificateur</p>
       <div class="card-box auth-card">
-        <div id="auth-msg"></div>
+        <div id="auth-msg">${getPendingTransfer() ? `<div class="ok-msg">📨 Créez votre compte avec l'adresse e-mail qui a reçu l'invitation de transfert : vous pourrez ensuite accepter votre calendrier.</div>` : ""}</div>
         <form id="signup-form">
           <div class="field">
             <label>Nom / prénom</label>
@@ -1126,7 +1447,7 @@ function topbarHTML(){
         </span>
       </button>
       <div class="hb-actions">
-        ${state.profile?.is_cm ? `<button class="btn outline hb-btn" onclick="location.hash='#/clients'" title="Changer de calendrier (client)">🗂 ${state.currentClientId ? h(state.currentClientName || "Client") : "Mon calendrier"} ▾</button>` : ""}
+        ${isCM() ? `<button class="btn outline hb-btn" onclick="location.hash='#/clients'" title="Changer de calendrier (client)">🗂 ${state.currentClientId ? h(state.currentClientName || "Client") : "Mon calendrier"} ▾</button>` : ""}
         ${state.profile?.is_admin ? `<button class="btn outline hb-btn" onclick="location.hash='#/admin'">Vue d'ensemble</button>` : ""}
       </div>
     </header>
@@ -1287,7 +1608,7 @@ function notify(msg, action){
 async function moveCardToDate(id, oldDate, newDate, silent){
   if (!UUID_RE.test(id) || !isValidDateStr(newDate) || oldDate === newDate) return;
   const { error } = await supabaseClient.from("content_cards").update({ card_date: newDate }).eq("id", id);
-  if (error) { notify("Impossible de déplacer la fiche : " + error.message); return; }
+  if (error) { notify("Impossible de déplacer la fiche : " + friendlyError(error.message)); return; }
   await renderHome();
   notify(silent ? "Déplacement annulé" : "Fiche déplacée au " + formatFrDate(newDate),
     silent ? null : { label: "Annuler", fn: () => moveCardToDate(id, newDate, oldDate, true) });
@@ -1457,6 +1778,7 @@ function viewSwitcherHTML(){
 
 function homeToolbarHTML(){
   return `
+    ${trialBannerHTML()}
     <div class="toolbar-row">
       <button class="btn outline" style="padding:8px 14px;" onclick="goToday()">📅 Aujourd'hui</button>
       <button class="btn outline" style="padding:8px 14px;" onclick="location.hash='#/a-faire'">📝 À faire<span class="task-badge" id="task-badge"></span></button>
@@ -1697,6 +2019,8 @@ function openFilePicker(multiple, onFiles){
 function renderPhotoCarousel(){
   const wrap = document.getElementById("photo-carousel");
   if (!wrap) return;
+  const maxP = billingOn() ? ent().maxPhotos : null;
+  const full = maxP != null && ficheImages.length >= maxP;
   wrap.innerHTML = ficheImages.map((img, i) => `
     <div class="photo-slide">
       <img ${pimg(img.preview)} alt="Photo du contenu">
@@ -1705,7 +2029,9 @@ function renderPhotoCarousel(){
         <button type="button" data-action="remove" data-idx="${i}">Supprimer</button>
       </div>
     </div>
-  `).join("") + `<div class="photo-add-tile" id="photo-add-tile">📷 + Ajouter une photo</div>`;
+  `).join("") + (full
+    ? `<div class="photo-add-tile locked">🔒 Votre formule inclut ${maxP} photo par fiche.<br><a href="#/abonnement" target="_blank" rel="noopener">Voir les formules</a></div>`
+    : `<div class="photo-add-tile" id="photo-add-tile">📷 + Ajouter une photo</div>`);
 
   wrap.querySelectorAll('[data-action="remove"]').forEach(btn => {
     btn.addEventListener("click", () => {
@@ -1726,7 +2052,9 @@ function renderPhotoCarousel(){
   if (addTile) {
     addTile.addEventListener("click", () => {
       openFilePicker(true, (files) => {
-        files.forEach(file => ficheImages.push({ id: randId(), url: null, file, preview: URL.createObjectURL(file) }));
+        const room = maxP == null ? files.length : Math.max(0, maxP - ficheImages.length);
+        if (files.length > room) notify(`Votre formule inclut ${maxP} photo${maxP > 1 ? "s" : ""} par fiche.`);
+        files.slice(0, room).forEach(file => ficheImages.push({ id: randId(), url: null, file, preview: URL.createObjectURL(file) }));
         renderPhotoCarousel();
       });
     });
@@ -1822,7 +2150,7 @@ async function renderFiche(cardId, dateForNew){
           <button type="submit" class="btn gold">Enregistrer</button>
           <button type="button" class="btn outline" id="new-fiche-btn">+ Créer une nouvelle fiche</button>
           ${card ? `<button type="button" class="btn outline" id="dup-fiche-btn">⧉ Dupliquer</button>` : ""}
-          ${card && state.profile?.is_cm ? `<button type="button" class="btn outline" id="pdf-fiche-btn">📄 Exporter en PDF</button>
+          ${card && isCM() ? `<button type="button" class="btn outline" id="pdf-fiche-btn">📄 Exporter en PDF</button>
           <label style="flex-basis:100%;font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:center;"><input type="checkbox" id="f-pdf-obs"> Inclure mes observations (notes) dans le PDF</label>` : ""}
           ${card ? `<button type="button" class="btn danger" id="del-fiche-btn">🗑 Supprimer</button>` : ""}
         </div>
@@ -1886,7 +2214,7 @@ async function renderFiche(cardId, dateForNew){
         image_url: card.image_url || null
       };
       const { data: created, error } = await supabaseClient.from("content_cards").insert(dupPayload).select().single();
-      if (error) { alert(error.message); return; }
+      if (error) { alert(friendlyError(error.message)); return; }
       if (ficheTasks.length) {
         await supabaseClient.from("card_tasks").insert(
           ficheTasks.map(t => ({ card_id: created.id, user_id: state.session.user.id, title: t.title, done: false })));
@@ -1901,7 +2229,7 @@ async function renderFiche(cardId, dateForNew){
       if (newDate === dateStr) return;
       ficheDirtyCheck = null;
       const { error } = await supabaseClient.from("content_cards").update({ card_date: newDate }).eq("id", card.id);
-      if (error) { alert(error.message); return; }
+      if (error) { alert(friendlyError(error.message)); return; }
       location.hash = `#/jour/${newDate}`;
     });
   }
@@ -2000,7 +2328,7 @@ function wireFicheTasks(){
 // Ouvre la fenêtre d'impression du navigateur sur une mise en page propre :
 // choisir « Enregistrer au format PDF » comme imprimante.
 async function exportFichePdf(dateStr){
-  if (!state.profile?.is_cm) return;
+  if (!isCM()) return;
   const g = (id) => (document.getElementById(id)?.value || "").trim();
   const withObs = !!document.getElementById("f-pdf-obs")?.checked;
   const urls = ficheImages.map(i => i.url || (i.file ? URL.createObjectURL(i.file) : null)).filter(Boolean);
@@ -2152,7 +2480,7 @@ async function saveFiche(existingCard, dateStr, createNewAfter){
       location.hash = `#/jour/${dateStr}`;
     }
   } catch (err) {
-    msg.innerHTML = `<div class="error-msg">${h(err.message || String(err))}</div>`;
+    msg.innerHTML = `<div class="error-msg">${h(friendlyError(err.message || String(err)))}</div>`;
   }
 }
 
@@ -2234,16 +2562,26 @@ async function loadClientsTab(status){
     return;
   }
 
+  const pend = {};
+  try {
+    const { data: trs } = await supabaseClient.from("client_transfers").select("client_id,email,expires_at").eq("status", "pending").gt("expires_at", new Date().toISOString());
+    (trs || []).forEach(t => { pend[t.client_id] = t; });
+  } catch(e) { /* table absente : pas de transferts */ }
+
   wrap.innerHTML = data.map(c => {
     const initial = (c.name || "?").trim().charAt(0).toUpperCase();
     let actions = "";
+    const tr = pend[c.id];
+    const trLine = tr ? `<div style="font-size:11px;color:var(--muted);">📨 Transfert proposé à ${h(tr.email)} · expire le ${h(fmtDateFr(tr.expires_at))} · <a href="#" data-transfer="${c.id}" data-name="${h(c.name)}" data-email="${h(tr.email)}">renvoyer</a> · <a href="#" data-tcancel="${c.id}">annuler</a></div>` : "";
     if (status === "actif") {
       actions = `
         <button type="button" class="btn gold" style="padding:6px 12px;flex:none;" data-switch="${c.id}" data-name="${h(c.name)}">Basculer</button>
+        <button type="button" class="btn outline" style="padding:6px 12px;flex:none;" data-transfer="${c.id}" data-name="${h(c.name)}" title="Transférer ce calendrier à votre client">Transférer</button>
         <button type="button" class="btn outline" style="padding:6px 12px;flex:none;" data-archive="${c.id}">Archiver</button>
         <button type="button" class="btn danger" style="padding:6px 12px;flex:none;" data-trash="${c.id}">🗑</button>`;
     } else if (status === "archive") {
       actions = `
+        <button type="button" class="btn outline" style="padding:6px 12px;flex:none;" data-transfer="${c.id}" data-name="${h(c.name)}">Transférer</button>
         <button type="button" class="btn outline" style="padding:6px 12px;flex:none;" data-restore="${c.id}">Réactiver</button>
         <button type="button" class="btn danger" style="padding:6px 12px;flex:none;" data-trash="${c.id}">🗑</button>`;
     } else {
@@ -2255,13 +2593,25 @@ async function loadClientsTab(status){
         <button type="button" class="btn danger" style="padding:6px 12px;flex:none;" data-purge="${c.id}" ${canPurge ? "" : "disabled"}>Suppr. def.</button>`;
     }
     return `
-      <div class="fiche-item" style="cursor:default;">
+      <div class="fiche-item" style="cursor:default;flex-wrap:wrap;">
         <span class="avatar" style="width:40px;height:40px;font-size:16px;flex:none;">${h(initial)}</span>
-        <div class="info"><div class="l1">${h(c.name)}</div></div>
-        ${actions}
+        <div class="info" style="flex:1 1 0;min-width:0;text-align:left;"><div class="l1">${h(c.name)}</div>${trLine}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;flex-basis:100%;align-items:center;">${actions}</div>
       </div>`;
   }).join("");
 
+  wrap.querySelectorAll("[data-transfer]").forEach(el => {
+    el.addEventListener("click", ev => { ev.preventDefault(); openTransferDialog(el.dataset.transfer, el.dataset.name, el.dataset.email || ""); });
+  });
+  wrap.querySelectorAll("[data-tcancel]").forEach(el => {
+    el.addEventListener("click", async ev => {
+      ev.preventDefault();
+      if (!confirm("Annuler ce transfert ? Le lien envoyé à votre client ne fonctionnera plus.")) return;
+      const { error } = await supabaseClient.rpc("cancel_client_transfer", { p_client_id: el.dataset.tcancel });
+      if (error) { alert(error.message); return; }
+      loadClientsTab(document.querySelector(".client-tab.gold").dataset.tab);
+    });
+  });
   wrap.querySelectorAll("[data-switch]").forEach(btn => {
     btn.addEventListener("click", () => switchClient(btn.dataset.switch, btn.dataset.name));
   });
@@ -2303,6 +2653,40 @@ async function loadClientsTab(status){
       if (state.currentClientId === id) switchClientLocalReset();
       loadClientsTab("corbeille");
     });
+  });
+}
+
+function openTransferDialog(clientId, clientName, prefill){
+  if (document.getElementById("transfer-overlay")) return;
+  const ov = document.createElement("div");
+  ov.className = "tutorial-overlay"; ov.id = "transfer-overlay";
+  ov.innerHTML = `<div class="card-box" style="max-width:420px;width:100%;max-height:90vh;overflow:auto;">
+    <h3 style="margin-top:0;">Transférer « ${h(clientName)} »</h3>
+    <p style="font-size:14px;">Votre client reçoit un e-mail et dispose de <strong>14 jours</strong> pour créer son compte, s'abonner (formule Basique au minimum) et accepter. Une fois accepté, son calendrier (fiches, tâches, photos) est <strong>déplacé dans son compte et supprimé du vôtre</strong> : vous n'en gardez aucune copie. Tant qu'il n'a pas accepté, vous gardez la main et pouvez annuler.</p>
+    <div id="tr-dlg-msg"></div>
+    <div class="field"><label>Adresse e-mail de votre client</label><input type="email" id="tr-email" placeholder="client@exemple.fr" value="${h(prefill)}" autocomplete="off"></div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="btn outline" id="tr-cancel" style="flex:1;">Fermer</button>
+      <button class="btn gold" id="tr-send" style="flex:1;">Envoyer le transfert</button>
+    </div></div>`;
+  document.body.appendChild(ov);
+  const close = () => ov.remove();
+  document.getElementById("tr-cancel").addEventListener("click", close);
+  document.getElementById("tr-send").addEventListener("click", async () => {
+    const email = document.getElementById("tr-email").value.trim();
+    const msg = document.getElementById("tr-dlg-msg");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { msg.innerHTML = `<div class="error-msg">Adresse e-mail invalide.</div>`; return; }
+    if (!confirm("Envoyer le transfert du calendrier « " + clientName + " » à " + email + " ?\nSi votre client accepte, vous perdrez l'accès à ce calendrier.")) return;
+    const btn = document.getElementById("tr-send"); btn.disabled = true; btn.textContent = "Envoi…";
+    const { data, error } = await supabaseClient.functions.invoke("transfer-start", { body: { client_id: clientId, email } });
+    if (error || !data || !data.ok) {
+      btn.disabled = false; btn.textContent = "Envoyer le transfert";
+      msg.innerHTML = `<div class="error-msg">${h(await fnErrorMessage(error, data, "L'envoi a échoué. Réessayez."))}</div>`;
+      return;
+    }
+    close();
+    loadClientsTab(document.querySelector(".client-tab.gold").dataset.tab);
+    alert("Transfert envoyé à " + email + ". Il est valable 14 jours.");
   });
 }
 
@@ -2569,8 +2953,9 @@ const LEGAL = {
   vat: "FR51104737218",
   director: "Madame Céline ADAM",
   dbRegion: "l'Union européenne (Irlande)",
-  updated: "29 septembre 2026",
-  cguUpdated: "30 septembre 2026"
+  updated: "3 octobre 2026",
+  cguUpdated: "4 octobre 2026",
+  cgvUpdated: "3 octobre 2026"
 };
 
 function legalMentionsHTML(){
@@ -2593,7 +2978,7 @@ function legalMentionsHTML(){
     <ul>
       <li><strong>Application web :</strong> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, États-Unis (cloudflare.com).</li>
       <li><strong>Base de données, authentification et fichiers :</strong> Supabase, Inc. (supabase.com)${L.dbRegion ? `, données hébergées dans ${h(L.dbRegion)}` : ""}.</li>
-      <li><strong>Envoi des e-mails (confirmation de compte, réinitialisation du mot de passe) :</strong> Resend, Inc., États-Unis (resend.com). Il reçoit votre adresse e-mail et le contenu du message pour l'acheminer.</li>
+      <li><strong>Envoi des e-mails (confirmation de compte, réinitialisation du mot de passe, invitations de transfert de calendrier) :</strong> Resend, Inc., États-Unis (resend.com). Il reçoit votre adresse e-mail et le contenu du message pour l'acheminer.</li>
     </ul>
 
     <h3>Propriété intellectuelle</h3>
@@ -2622,12 +3007,13 @@ function legalPrivacyHTML(){
       <li><strong>Votre compte :</strong> nom affiché, adresse e-mail, mot de passe (conservé sous forme chiffrée, nous ne pouvons pas le lire), date d'acceptation de cette politique.</li>
       <li><strong>Votre profil (facultatif) :</strong> photo de profil, liens de vos pages de réseaux sociaux.</li>
       <li><strong>Vos contenus :</strong> les fiches de publication (date, plateforme, format, catégorie, heure, description, hashtags, observations, tâches, statut), leurs photos, et, si vous êtes Community Manager, les noms de vos clients.</li>
+      <li><strong>Votre abonnement :</strong> formule choisie, dates d'essai et de renouvellement, statut de paiement et identifiant client Stripe. Vos coordonnées bancaires sont saisies chez Stripe et ne nous sont jamais transmises.</li>
       <li><strong>Données techniques :</strong> journaux de connexion (dont l'adresse IP) tenus par nos hébergeurs pour la sécurité, et vérification anti-robot lors de la connexion.</li>
     </ul>
 
     <h3>3. Pourquoi, et sur quelle base légale ?</h3>
     <ul>
-      <li>Vous fournir l'application (créer votre compte, enregistrer et afficher vos fiches) : <strong>exécution du service que vous demandez</strong>.</li>
+      <li>Vous fournir l'application (créer votre compte, enregistrer et afficher vos fiches) et gérer votre abonnement et vos paiements : <strong>exécution du contrat</strong>.</li>
       <li>Sécuriser l'application et lutter contre les abus et les robots : <strong>intérêt légitime</strong>.</li>
       <li>Respecter nos obligations légales, le cas échéant.</li>
     </ul>
@@ -2637,7 +3023,7 @@ function legalPrivacyHTML(){
     <ul>
       <li><strong>Vous seul·e</strong> voyez vos fiches, vos photos et vos clients : chaque compte est cloisonné.</li>
       <li>Les administrateurs de ${h(L.name)} voient la liste des comptes (nom, e-mail, photo de profil, espace de stockage utilisé), pas le contenu de vos fiches dans l'application.</li>
-      <li><strong>Nos prestataires techniques</strong> traitent les données pour notre compte : Supabase (base de données, authentification, stockage des fichiers), Cloudflare (hébergement de l'application, vérification anti-robot) et Resend (envoi des e-mails de connexion). Des bibliothèques d'affichage sont aussi chargées depuis les services jsDelivr et cdnjs (Cloudflare), ce qui leur transmet votre adresse IP comme pour tout site web.</li>
+      <li><strong>Nos prestataires techniques</strong> traitent les données pour notre compte : Supabase (base de données, authentification, stockage des fichiers), Cloudflare (hébergement de l'application, vérification anti-robot) Resend (envoi des e-mails de connexion) et Stripe, Inc. (paiement des abonnements et factures). Des bibliothèques d'affichage sont aussi chargées depuis les services jsDelivr et cdnjs (Cloudflare), ce qui leur transmet votre adresse IP comme pour tout site web.</li>
     </ul>
     <p>Si vous êtes Community Manager, vous ajoutez des contenus concernant vos clients : vous restez responsable de disposer des droits nécessaires sur ces contenus (par exemple sur les photos où des personnes sont identifiables).</p>
 
@@ -2682,6 +3068,9 @@ function legalCguHTML(){
 
     <h3>2. Qui peut l'utiliser ?</h3>
     <p>L'application est destinée aux clients de ${h(L.name)} et aux Community Managers qui travaillent avec elle, âgés d'au moins 18 ans. Les conditions financières éventuelles (gratuité, abonnement, prestation associée) sont convenues séparément entre vous et l'Éditeur ; les présentes CGU n'y dérogent pas.</p>
+
+    <h3>2 bis. Transfert d'un calendrier client</h3>
+    <p>Un Community Manager peut proposer à l'un de ses clients de reprendre son calendrier. Le client reçoit un e-mail contenant un lien valable 14 jours ; il doit disposer d'un compte et d'un abonnement (formule Basique au minimum) pour l'accepter. Le Community Manager reste seul décideur de l'envoi et peut annuler tant que le client n'a pas accepté. Une fois le transfert accepté, les fiches, tâches et photos du calendrier sont déplacées dans le compte du client et ne sont <strong>plus conservées</strong> dans le compte du Community Manager. Le transfert est définitif.</p>
 
     <h3>3. Votre compte</h3>
     <ul>
@@ -2772,14 +3161,60 @@ function renderTermsGate(){
   });
 }
 
+function legalCgvHTML(){
+  const L = LEGAL, C = window.MADE_CONFIG;
+  return `
+    <h3>1. Objet</h3>
+    <p>Les présentes conditions générales de vente (CGV) régissent l'abonnement payant au service <strong>MADE planificateur</strong> proposé par ${h(L.name)}, ${h(L.form)} au capital de ${h(L.capital)}, ${h(L.address)}, RCS ${h(L.rcs)}, TVA ${h(L.vat)} (« l'Éditeur »). L'utilisation du service reste soumise aux <a href="#/cgu">conditions générales d'utilisation</a>.</p>
+
+    <h3>2. Le service et les formules</h3>
+    <p>MADE planificateur est un calendrier éditorial en ligne pour planifier du contenu destiné aux réseaux sociaux. L'accès est proposé par abonnement, en facturation <strong>mensuelle</strong> ou <strong>annuelle</strong>, selon trois formules :</p>
+    <ul>
+      <li><strong>Basique</strong> : une fiche par jour au maximum et une photo par fiche ;</li>
+      <li><strong>Pro</strong> : nombre de fiches par jour et de photos par fiche illimité ;</li>
+      <li><strong>Community Manager</strong> : les avantages de la formule Pro, ainsi que la création de clients en nombre illimité, chacun disposant de son propre calendrier, que le Community Manager gère seul.</li>
+    </ul>
+    <p>Le contenu de chaque formule est détaillé sur la page d'abonnement avant tout paiement. L'abonné peut changer de formule à tout moment depuis la page « Mon abonnement ». En cas de passage à une formule inférieure, les fiches et photos déjà créées sont conservées, mais les limites de la nouvelle formule s'appliquent aux créations suivantes.</p>
+
+    <h3>3. Essai gratuit</h3>
+    <p>Chaque nouveau compte bénéficie d'une période d'essai gratuite, sans saisie de moyen de paiement, avec les fonctions de la formule Pro (la gestion de clients est réservée à la formule Community Manager). Sa durée est indiquée dans l'application. À la fin de l'essai, l'accès à l'outil est suspendu tant qu'aucun abonnement n'est souscrit. Les données restent conservées. Si vous vous abonnez pendant l'essai, le premier paiement n'a lieu qu'à la fin de l'essai lorsque cela est techniquement possible.</p>
+
+    <h3>4. Prix</h3>
+    <p>Les prix sont indiqués en euros sur la page d'abonnement, avant tout paiement, avec la mention hors taxes (HT) ou toutes taxes comprises (TTC)${(C.PLANS || []).length ? ` : ${C.PLANS.map(p => `${h(p.name)} ${h(p.monthly)} ou ${h(p.yearly)}`).join(" ; ")}` : ""}. Le prix applicable est celui affiché au moment de la souscription. L'Éditeur peut modifier ses prix pour l'avenir ; l'abonné est prévenu au moins 30 jours avant l'application du nouveau prix à son prochain renouvellement et peut résilier avant cette date.</p>
+
+    <h3>5. Paiement</h3>
+    <p>Le paiement s'effectue en ligne par carte bancaire (ou autre moyen proposé) via le prestataire <strong>Stripe</strong>. Les coordonnées bancaires sont saisies directement chez Stripe : l'Éditeur ne les voit ni ne les conserve. Une facture est mise à disposition de l'abonné. En cas d'échec de paiement, Stripe peut effectuer de nouvelles tentatives ; à défaut de règlement, l'accès peut être suspendu.</p>
+
+    <h3>6. Durée, renouvellement et résiliation</h3>
+    <ul>
+      <li>L'abonnement est conclu pour la durée choisie (un mois ou un an) et <strong>se renouvelle automatiquement</strong> à chaque échéance.</li>
+      <li>L'abonné peut le <strong>résilier à tout moment</strong> depuis la page « Mon abonnement » (bouton « Gérer mon abonnement »). La résiliation prend effet à la fin de la période déjà payée : l'accès reste ouvert jusqu'à cette date.</li>
+      <li>Sauf obligation légale contraire, toute période commencée est due et n'est pas remboursée au prorata.</li>
+    </ul>
+
+    <h3>7. Droit de rétractation</h3>
+    <p><strong>Si vous êtes consommateur</strong>, vous disposez d'un délai de 14 jours à compter de la souscription pour vous rétracter, sans avoir à motiver votre décision, en écrivant à <a href="mailto:${h(L.email)}">${h(L.email)}</a>. Si vous demandez expressément que le service commence pendant ce délai, vous devrez payer un montant proportionnel à ce qui a été fourni jusqu'à votre demande de rétractation. <strong>Si vous êtes un professionnel</strong> agissant pour votre activité, ce droit de rétractation ne s'applique pas.</p>
+
+    <h3>8. Disponibilité et responsabilité</h3>
+    <p>L'Éditeur met tout en œuvre pour assurer l'accès au service, sans garantie d'absence d'interruption (maintenance, incident chez un hébergeur). Les limites de responsabilité prévues aux CGU s'appliquent. Elles ne jouent pas lorsque la loi l'interdit, notamment à l'égard des consommateurs.</p>
+
+    <h3>9. Données personnelles</h3>
+    <p>Le traitement des données, y compris celles liées au paiement, est décrit dans la <a href="#/confidentialite">politique de confidentialité</a>.</p>
+
+    <h3>10. Droit applicable, litiges et médiation</h3>
+    <p>Les CGV sont soumises au droit français. En cas de difficulté, contactez-nous d'abord à <a href="mailto:${h(L.email)}">${h(L.email)}</a>. Le consommateur peut recourir gratuitement à un médiateur de la consommation ; ses coordonnées sont communiquées sur simple demande à la même adresse. À défaut d'accord amiable, les tribunaux français sont compétents, sous réserve des règles impératives protégeant les consommateurs.</p>
+
+    <p class="maj">Dernière mise à jour : ${h(L.cgvUpdated)}</p>`;
+}
+
 function renderLegal(kind){
   const loggedIn = !!(state.session && state.profile);
   const head = loggedIn
     ? topbarHTML()
     : `<header class="topbar"><a href="#/" class="brand"><img src="${LOGO_DATA_URI}" alt="MADE"><span>MADE planificateur</span></a></header>`;
-  const TITLES = { mentions: "Mentions légales", privacy: "Politique de confidentialité", cgu: "Conditions générales d'utilisation" };
-  const BODY = { mentions: legalMentionsHTML, privacy: legalPrivacyHTML, cgu: legalCguHTML };
-  const LINKS = { mentions: ["#/mentions-legales", "Mentions légales"], privacy: ["#/confidentialite", "Politique de confidentialité"], cgu: ["#/cgu", "Conditions d'utilisation"] };
+  const TITLES = { mentions: "Mentions légales", privacy: "Politique de confidentialité", cgu: "Conditions générales d'utilisation", cgv: "Conditions générales de vente" };
+  const BODY = { mentions: legalMentionsHTML, privacy: legalPrivacyHTML, cgu: legalCguHTML, cgv: legalCgvHTML };
+  const LINKS = { mentions: ["#/mentions-legales", "Mentions légales"], privacy: ["#/confidentialite", "Politique de confidentialité"], cgu: ["#/cgu", "Conditions d'utilisation"], cgv: ["#/cgv", "Conditions de vente"] };
   const others = Object.keys(LINKS).filter(k => k !== kind).map(k => `<a href="${LINKS[k][0]}">${LINKS[k][1]}</a>`).join(" · ");
   app.innerHTML = head + `
     <div class="page-title-row">
@@ -2962,6 +3397,15 @@ function renderProfile(){
         </div>
       </details>
 
+      ${billingOn() ? `
+      <details class="acc">
+        <summary>💳 Mon abonnement</summary>
+        <div class="acc-body">
+          <p style="margin:0 0 12px;">${h(accessSummaryText(state.access) || "Gérez votre abonnement et vos factures.")}</p>
+          <button class="btn gold" style="width:100%;" onclick="location.hash='#/abonnement'">Voir mon abonnement</button>
+        </div>
+      </details>` : ""}
+
       <details class="acc danger-zone">
         <summary>🛡 Mes données et confidentialité</summary>
         <div class="acc-body">
@@ -2969,6 +3413,7 @@ function renderProfile(){
         <div class="data-links">
           <a href="#/confidentialite" target="_blank" rel="noopener">Politique de confidentialité</a>
           <a href="#/cgu" target="_blank" rel="noopener">Conditions d'utilisation</a>
+          ${billingOn() ? `<a href="#/cgv" target="_blank" rel="noopener">Conditions de vente</a>` : ""}
           <a href="#/mentions-legales" target="_blank" rel="noopener">Mentions légales</a>
         </div>
         <button class="btn outline" id="export-btn" style="width:100%;margin-bottom:18px;">⬇ Exporter mes données</button>
@@ -3014,6 +3459,14 @@ function renderProfile(){
   delBtn.addEventListener("click", async () => {
     const msg = document.getElementById("profile-msg");
     if (delInput.value.trim() !== "SUPPRIMER") return;
+    if (billingOn()) {
+      const a = await loadAccess(true);
+      if (a && a.reason === "subscribed" && !a.cancel_at_period_end) {
+        msg.innerHTML = `<div class="error-msg">Vous avez un abonnement en cours. Résiliez-le d'abord (Mon abonnement → « Gérer mon abonnement »), sinon il continuerait d'être prélevé. Vous pourrez ensuite supprimer votre compte.</div>`;
+        window.scrollTo(0, 0);
+        return;
+      }
+    }
     if (!confirm("Supprimer définitivement votre compte, vos clients, vos fiches et vos photos ? Impossible à annuler.")) return;
     delBtn.disabled = true; delBtn.textContent = "Suppression en cours...";
     try {
