@@ -322,6 +322,23 @@
   .fab{position:fixed;right:18px;bottom:22px;width:56px;height:56px;border-radius:50%;border:none;
     background:var(--gold);color:var(--on-gold);font-size:30px;font-weight:700;line-height:1;cursor:pointer;
     box-shadow:0 4px 14px rgba(0,0,0,.3);z-index:50;display:flex;align-items:center;justify-content:center;}
+  .client-menu{position:fixed;z-index:200;min-width:250px;max-width:min(92vw,330px);max-height:70vh;overflow:auto;background:var(--white);
+    border:1.5px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.28);padding:6px;text-align:left;}
+  .client-menu .cm-item{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;box-sizing:border-box;border:none;background:transparent;
+    color:var(--ink);font:inherit;font-size:14px;text-align:left;padding:10px 12px;border-radius:9px;cursor:pointer;}
+  .client-menu .cm-item:hover,.client-menu .cm-item:focus-visible{background:var(--beige);outline:none;}
+  .client-menu .cm-item.active{font-weight:700;color:var(--green-dark);}
+  .client-menu .cm-item small{color:var(--muted);font-weight:400;}
+  .client-menu .cm-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .client-menu .cm-check{color:var(--gold);font-weight:700;flex:none;}
+  .client-menu .cm-sep{height:1px;background:var(--line);margin:6px 4px;}
+  .client-menu .cm-title{font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);padding:4px 12px 2px;}
+  .client-menu .cm-loading{padding:16px;text-align:center;}
+  .home-fab{position:fixed;left:14px;bottom:20px;max-width:60vw;height:44px;padding:0 16px;border-radius:22px;border:1.5px solid var(--gold);
+    background:var(--white);color:var(--green-dark);font-size:14px;font-weight:700;cursor:pointer;display:none;align-items:center;gap:6px;
+    box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:60;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .home-fab.show{display:flex;}
+  body.has-home-fab #app{padding-bottom:84px;}
   .upcoming{margin:22px 0 90px;text-align:left;}
   .upcoming h3{color:var(--green-dark);font-size:15px;margin:0 0 10px;}
   .up-row{display:flex;align-items:center;gap:10px;background:var(--white);border:1.5px solid var(--line);border-radius:10px;
@@ -1080,7 +1097,33 @@ async function init(){
   route();
 }
 
+// Bouton « retour au calendrier » : visible sur toutes les pages sauf l'accueil, ramène au calendrier en cours
+// (celui du client sélectionné pour un Community Manager)
+function updateHomeFab(){
+  let b = document.getElementById("home-fab");
+  if (!b) {
+    b = document.createElement("button");
+    b.id = "home-fab"; b.type = "button"; b.className = "home-fab";
+    b.addEventListener("click", () => { if ((location.hash || "#/") === "#/") route(); else location.hash = "#/"; });
+    document.body.appendChild(b);
+  }
+  const hash = location.hash || "#/";
+  const hidden = !state.session || state.emailConfirmed || state.recovery || hash === "#/" || hash === "" ||
+    /^#\/(partage|transfert|abonnement|mentions-legales|confidentialite|cgu|cgv|signup|mot-de-passe-oublie)/.test(hash) ||
+    (billingOn() && state.access && !state.access.access);
+  b.classList.toggle("show", !hidden);
+  document.body.classList.toggle("has-home-fab", !hidden);
+  if (!hidden) {
+    const name = state.currentClientId ? (state.currentClientName || "Client") : "";
+    const short = name.length > 16 ? name.slice(0, 15) + "…" : name;
+    b.textContent = name ? "📅 " + short : "📅 Calendrier";
+    b.setAttribute("aria-label", name ? "Retour au calendrier de " + name : "Retour au calendrier");
+  }
+}
+
 async function route(){
+  updateHomeFab();
+  setTimeout(updateHomeFab, 500); // le calendrier actif (client) peut être restauré un peu plus tard
   const hash = location.hash || "#/";
   // Pages légales : accessibles avec ou sans connexion
   if (hash === "#/mentions-legales") return renderLegal("mentions");
@@ -1147,7 +1190,7 @@ async function route(){
   if (hash === "#/a-faire") return renderTodoList();
   if (hash === "#/corbeille") return renderTrash();
   if (hash === "#/recherche") return renderSearch();
-  if (hash === "#/clients") return renderClients();
+  if (hash === "#/clients" || hash.startsWith("#/clients?")) return renderClients();
   renderHome();
 }
 
@@ -1591,7 +1634,7 @@ function topbarHTML(){
         </span>
       </button>
       <div class="hb-actions">
-        ${isCM() ? `<button class="btn outline hb-btn" onclick="location.hash='#/clients'" title="Changer de calendrier (client)">🗂 ${state.currentClientId ? h(state.currentClientName || "Client") : "Mon calendrier"} ▾</button>` : ""}
+        ${isCM() ? `<button class="btn outline hb-btn" id="client-menu-btn" aria-haspopup="menu" aria-expanded="false" onclick="toggleClientMenu(event)" title="Changer de calendrier (client)">🗂 ${state.currentClientId ? h(state.currentClientName || "Client") : "Mon calendrier"} ▾</button>` : ""}
         ${state.profile?.is_admin ? `<button class="btn outline hb-btn" onclick="location.hash='#/admin'">Vue d'ensemble</button>` : ""}
       </div>
     </header>
@@ -2648,10 +2691,67 @@ function switchClient(clientId, clientName){
     if (clientId) localStorage.setItem(`made_current_client_${uid}`, clientId);
     else localStorage.removeItem(`made_current_client_${uid}`);
   } catch(e) { /* localStorage indisponible */ }
-  location.hash = "#/";
+  closeClientMenu();
+  if ((location.hash || "#/") === "#/") route(); else location.hash = "#/";
+}
+
+/* Menu déroulant « calendrier / clients » de l'en-tête (Community Manager) */
+function closeClientMenu(){
+  const m = document.getElementById("client-menu");
+  if (m) m.remove();
+  const b = document.getElementById("client-menu-btn");
+  if (b) b.setAttribute("aria-expanded", "false");
+  document.removeEventListener("click", clientMenuOutside, true);
+  document.removeEventListener("keydown", clientMenuKey, true);
+}
+function clientMenuOutside(e){
+  const m = document.getElementById("client-menu"), b = document.getElementById("client-menu-btn");
+  if (m && !m.contains(e.target) && !(b && b.contains(e.target))) closeClientMenu();
+}
+function clientMenuKey(e){ if (e.key === "Escape") { closeClientMenu(); const b = document.getElementById("client-menu-btn"); if (b) b.focus(); } }
+
+async function toggleClientMenu(ev){
+  if (ev) ev.stopPropagation();
+  if (document.getElementById("client-menu")) return closeClientMenu();
+  const btn = document.getElementById("client-menu-btn");
+  if (!btn) return;
+  const menu = document.createElement("div");
+  menu.id = "client-menu"; menu.className = "client-menu"; menu.setAttribute("role", "menu");
+  const r = btn.getBoundingClientRect();
+  menu.style.top = Math.round(r.bottom + 6) + "px";
+  menu.style.right = Math.max(8, Math.round(window.innerWidth - r.right)) + "px";
+  menu.innerHTML = `<div class="cm-loading"><div class="spinner"></div></div>`;
+  document.body.appendChild(menu);
+  btn.setAttribute("aria-expanded", "true");
+  setTimeout(() => { document.addEventListener("click", clientMenuOutside, true); document.addEventListener("keydown", clientMenuKey, true); }, 0);
+
+  const { data } = await supabaseClient.from("clients").select("id,name").eq("status", "actif").order("name", { ascending: true });
+  if (!document.getElementById("client-menu")) return;   // fermé entre-temps
+  const list = data || [];
+  const cur = state.currentClientId;
+  const item = (inner, attrs, active) => `<button type="button" role="menuitem" class="cm-item${active ? " active" : ""}" ${attrs}>${inner}</button>`;
+  menu.innerHTML = `
+    ${item(`<span>👤 Mon calendrier personnel</span>${!cur ? `<span class="cm-check">✓</span>` : ""}`, `data-cm="me"`, !cur)}
+    ${list.length ? `<div class="cm-sep"></div><div class="cm-title">Mes clients</div>` : ""}
+    ${list.map(c => item(`<span class="cm-name">${h(c.name)}</span>${cur === c.id ? `<span class="cm-check">✓</span>` : ""}`, `data-cm="c" data-id="${h(c.id)}" data-name="${h(c.name)}"`, cur === c.id)).join("")}
+    <div class="cm-sep"></div>
+    ${item("＋ Ajouter un client", `data-go="#/clients?add=1"`)}
+    ${item("⚙️ Gérer mes clients <small>(transférer, archiver…)</small>", `data-go="#/clients"`)}
+    ${item("📦 Clients archivés", `data-go="#/clients?tab=archive"`)}
+    ${item("🗑 Corbeille des clients", `data-go="#/clients?tab=corbeille"`)}`;
+  menu.querySelectorAll("[data-cm]").forEach(b => b.addEventListener("click", () => {
+    if (b.dataset.cm === "me") switchClient(null, null); else switchClient(b.dataset.id, b.dataset.name);
+  }));
+  menu.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => {
+    const target = b.dataset.go; closeClientMenu();
+    if ((location.hash || "") === target) route(); else location.hash = target;
+  }));
+  const first = menu.querySelector(".cm-item"); if (first) first.focus();
 }
 
 async function renderClients(){
+  const qs = new URLSearchParams((location.hash.split("?")[1] || ""));
+  const startTab = ["actif", "archive", "corbeille"].includes(qs.get("tab")) ? qs.get("tab") : "actif";
   app.innerHTML = topbarHTML() + `
     <div class="page-title-row">
       <button class="back-btn" onclick="location.hash='#/'">‹</button>
@@ -2670,9 +2770,9 @@ async function renderClients(){
       <button class="btn gold" id="create-client-btn" style="width:100%;">+ Créer ce client</button>
     </div>
     <div class="toolbar-row">
-      <button class="btn gold client-tab" data-tab="actif" style="padding:8px 14px;">Actifs</button>
-      <button class="btn outline client-tab" data-tab="archive" style="padding:8px 14px;">Archivés</button>
-      <button class="btn outline client-tab" data-tab="corbeille" style="padding:8px 14px;">Corbeille</button>
+      <button class="btn ${startTab === "actif" ? "gold" : "outline"} client-tab" data-tab="actif" style="padding:8px 14px;">Actifs</button>
+      <button class="btn ${startTab === "archive" ? "gold" : "outline"} client-tab" data-tab="archive" style="padding:8px 14px;">Archivés</button>
+      <button class="btn ${startTab === "corbeille" ? "gold" : "outline"} client-tab" data-tab="corbeille" style="padding:8px 14px;">Corbeille</button>
     </div>
     <div id="clients-wrap" class="center"><div class="spinner"></div></div>
   `;
@@ -2698,7 +2798,8 @@ async function renderClients(){
     });
   });
 
-  loadClientsTab("actif");
+  loadClientsTab(startTab);
+  if (qs.get("add")) { const ni = document.getElementById("new-client-name"); if (ni) { ni.scrollIntoView({ block: "center" }); ni.focus(); } }
 }
 
 async function loadClientsTab(status){
