@@ -1998,13 +1998,39 @@ function ensureTabbar(){
     if (a === "todo") location.hash = "#/a-faire";
     else if (a === "search") location.hash = "#/recherche";
     else if (a === "today") goToday();
-    else if (a === "add") { const n = new Date(); location.hash = "#/fiche/nouvelle/" + fmtDate(n.getFullYear(), n.getMonth(), n.getDate()); }
+    else if (a === "add") openNewFicheDialog();
     else if (a === "share") openShareDialog();
     else if (a === "trash") location.hash = "#/corbeille";
   });
   document.body.appendChild(t);
   return t;
 }
+/* « + » : choisir la date de la nouvelle fiche (aujourd'hui par défaut) */
+function openNewFicheDialog(){
+  if (document.getElementById("newfiche-overlay")) return;
+  const n = new Date();
+  const today = fmtDate(n.getFullYear(), n.getMonth(), n.getDate());
+  const ov = document.createElement("div");
+  ov.className = "tutorial-overlay"; ov.id = "newfiche-overlay";
+  ov.innerHTML = `<div class="card-box" style="max-width:360px;width:100%;">
+    <h3 style="margin-top:0;">Nouvelle fiche</h3>
+    <div class="field"><label for="nf-date">Date de publication</label><input type="date" id="nf-date" value="${today}"></div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="btn outline" id="nf-cancel" style="flex:1;">Annuler</button>
+      <button class="btn gold" id="nf-ok" style="flex:1;">Créer</button>
+    </div></div>`;
+  document.body.appendChild(ov);
+  const close = () => ov.remove();
+  const go = () => {
+    const v = document.getElementById("nf-date").value || today;
+    close(); location.hash = "#/fiche/nouvelle/" + v;
+  };
+  document.getElementById("nf-cancel").addEventListener("click", close);
+  document.getElementById("nf-ok").addEventListener("click", go);
+  ov.addEventListener("click", e => { if (e.target === ov) close(); });
+  document.getElementById("nf-date").addEventListener("keydown", e => { if (e.key === "Enter") go(); if (e.key === "Escape") close(); });
+}
+
 function showTabbar(){ ensureTabbar().classList.add("show"); document.body.classList.add("has-tabbar"); }
 function hideTabbar(){
   const t = document.getElementById("home-tabbar");
