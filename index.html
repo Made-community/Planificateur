@@ -3056,11 +3056,32 @@ async function renderAdmin(){
     <div id="admin-wrap" class="center"><div class="spinner"></div></div>
   `;
   const wrap = document.getElementById("admin-wrap");
-  const { data, error } = await supabaseClient.rpc("admin_list_users");
+  let { data, error } = await supabaseClient.rpc("admin_overview");
+  if (error) { // fonction pas encore installée : on retombe sur l'ancienne liste (sans dates ni formules)
+    const old = await supabaseClient.rpc("admin_list_users");
+    data = old.data; error = old.error;
+  }
   if (error) {
     wrap.innerHTML = `<div class="error-msg">${h(error.message)}</div>`;
     return;
   }
+  const dFr = (iso, withTime) => iso ? new Date(iso).toLocaleString("fr-FR", withTime ? { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Paris" } : { dateStyle: "medium", timeZone: "Europe/Paris" }) : "";
+  const planOf = u => {
+    if (u.access_reason === undefined) return { label: "", cls: "" };
+    const tier = { basic: "Basique", pro: "Pro", cm: "Community Manager" }[u.tier] || "";
+    const per = u.billing_interval === "year" ? "annuel" : "mensuel";
+    if (u.access_reason === "admin") return { label: "Administrateur", cls: "ok" };
+    if (u.access_reason === "subscribed") {
+      let l = `${tier || "Abonné"} · ${per}`;
+      if (u.sub_status === "past_due") l += " · paiement en échec";
+      else if (u.cancel_at_period_end) l += " · résilié, fin le " + dFr(u.current_period_end);
+      return { label: l, cls: u.sub_status === "past_due" || u.cancel_at_period_end ? "warn" : "ok" };
+    }
+    if (u.access_reason === "trial") return { label: "Essai gratuit" + (u.trial_ends_at ? " jusqu'au " + dFr(u.trial_ends_at) : ""), cls: "trial" };
+    return { label: "Sans abonnement (essai terminé)", cls: "warn" };
+  };
+  const count = {};
+  data.forEach(u => { const k = planOf(u).label.split(" · ")[0].split(" jusqu")[0] || "—"; count[k] = (count[k] || 0) + 1; });
   if (!data || !data.length) {
     wrap.innerHTML = `<div class="empty-state">Aucun utilisateur.</div>`;
     return;
@@ -3069,15 +3090,21 @@ async function renderAdmin(){
   wrap.innerHTML = `
     <div class="card-box" style="margin-bottom:14px;">
       <strong>${data.length}</strong> compte(s) au total · espace utilisé au total : <strong>${formatBytes(totalBytes)}</strong>
+      ${data[0] && data[0].access_reason !== undefined ? `<div style="margin-top:6px;font-size:13px;color:var(--muted);">${Object.entries(count).map(([k, n]) => `${h(k)} : ${n}`).join(" · ")}</div>` : ""}
     </div>
     ${data.map(u => `
-      <div class="fiche-item" style="cursor:default;">
+      <div class="fiche-item" style="cursor:default;align-items:flex-start;">
         ${u.avatar_url
           ? `<img class="thumb" style="border-radius:50%;" src="${h(u.avatar_url)}">`
           : `<div class="thumb" style="border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--on-gold);background:var(--gold-light);">${h((u.full_name || u.email || "?").trim().charAt(0).toUpperCase())}</div>`}
-        <div class="info">
+        <div class="info" style="text-align:left;min-width:0;overflow-wrap:anywhere;">
           <div class="l1">${h(u.full_name || "Sans nom")}</div>
           <div class="l2">${h(u.email)}</div>
+          ${u.created_at !== undefined ? `<div style="font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5;">
+            Inscrit le ${h(dFr(u.created_at))}<br>
+            Dernière connexion : ${u.last_sign_in_at ? h(dFr(u.last_sign_in_at, true)) : "jamais"}<br>
+            Formule : <strong style="color:var(--ink);">${h(planOf(u).label || "—")}</strong>
+          </div>` : ""}
         </div>
         <span class="status-pill" style="background:var(--beige);color:var(--green-dark);">${formatBytes(u.storage_bytes || 0)}</span>
       </div>
