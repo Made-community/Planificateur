@@ -347,10 +347,6 @@
     border:none;background:transparent;color:var(--muted);font:inherit;font-size:10px;font-weight:600;padding:6px 0 2px;cursor:pointer;}
   .tabbar .tab svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
   .tabbar .tab:hover,.tabbar .tab:focus-visible{color:var(--green-dark);outline:none;}
-  .tabbar .tab-add{flex:0 0 64px;color:var(--on-gold);}
-  .tabbar .tab-add .plus{width:52px;height:52px;margin-top:-22px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;
-    box-shadow:0 4px 12px rgba(0,0,0,.3);border:3px solid var(--white);box-sizing:border-box;}
-  .tabbar .tab-add svg{stroke:var(--on-gold);stroke-width:2.4;width:26px;height:26px;}
   .tabbar .task-badge{position:absolute;top:0;left:calc(50% + 4px);margin:0;}
   body.has-tabbar #app{padding-bottom:96px;}
   body.has-home-fab #app{padding-bottom:84px;}
@@ -1983,7 +1979,7 @@ function ensureTabbar(){
     todo:  '<svg viewBox="0 0 24 24"><rect x="4" y="3.5" width="16" height="17" rx="2.5"/><path d="M8.5 9.5l1.7 1.7 3.3-3.4M8.5 15.5h7"/></svg>',
     search:'<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>',
     today: '<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><circle cx="12" cy="15" r="1.4" fill="currentColor"/></svg>',
-    plus:  '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+    plus:  '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></svg>',
     share: '<svg viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg>',
     trash: '<svg viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l.8 12.5h9.4L17.5 7M10 11v5M14 11v5"/></svg>'
   };
@@ -1993,7 +1989,7 @@ function ensureTabbar(){
     <button class="tab" type="button" data-act="todo" aria-label="Tâches à faire">${ic.todo}<span class="task-badge" id="task-badge"></span></button>
     <button class="tab" type="button" data-act="search" aria-label="Rechercher une fiche">${ic.search}</button>
     <button class="tab" type="button" data-act="today" aria-label="Aujourd'hui">${ic.today}</button>
-    <button class="tab tab-add" type="button" data-act="add" aria-label="Créer une fiche pour aujourd'hui"><span class="plus">${ic.plus}</span></button>
+    <button class="tab" type="button" data-act="add" aria-label="Créer une fiche pour aujourd'hui">${ic.plus}</button>
     <button class="tab" type="button" data-act="share" aria-label="Partager en lecture seule">${ic.share}</button>
     <button class="tab" type="button" data-act="trash" aria-label="Corbeille">${ic.trash}</button>`;
   t.addEventListener("click", (e) => {
