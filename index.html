@@ -1626,7 +1626,15 @@ async function loadMonthCards(){
 const DOT_COLOR = { a_faire: "var(--orange)", programme: "var(--yellow)", publie: "var(--vert-ok)" };
 const STATUS_ORDER = ["a_faire", "programme", "publie"];
 
+// Jour avec une seule fiche : on l'ouvre directement (le retour ramène au calendrier)
+function openSingleFiche(id){ state.directFiche = id; location.hash = "#/fiche/" + id; }
+function ficheBack(dateStr){
+  if (state.directFiche) { state.directFiche = null; location.hash = "#/"; }
+  else location.hash = "#/jour/" + dateStr;
+}
+
 async function renderHome(){
+  state.directFiche = null;
   if (state.viewMode !== "month") return renderRangeView();
   app.innerHTML = topbarHTML() + `<div id="cal-wrap" class="center"><div class="spinner"></div></div>`;
   await loadMonthCards();
@@ -1670,7 +1678,7 @@ async function renderHome(){
       const badgeColor = DOT_COLOR[rep.status];
       const otherStatuses = STATUS_ORDER.filter(s => s !== rep.status && cards.some(c => c.status === s));
       cells += `
-        <div class="cal-day has-thumb ${isToday ? "today":""}" style="border:2.5px solid ${badgeColor};" data-drop-date="${dateStr}" ${cards.length === 1 ? `data-drag-card="${h(rep.id)}" data-drag-date="${dateStr}"` : `data-drag-multi="1"`} onclick="location.hash='#/jour/${dateStr}'">
+        <div class="cal-day has-thumb ${isToday ? "today":""}" style="border:2.5px solid ${badgeColor};" data-drop-date="${dateStr}" ${cards.length === 1 ? `data-drag-card="${h(rep.id)}" data-drag-date="${dateStr}"` : `data-drag-multi="1"`} onclick="${cards.length === 1 ? `openSingleFiche('${h(rep.id)}')` : `location.hash='#/jour/${dateStr}'`}">
           ${rep.image_url ? `<img class="thumb-bg" ${pimg(rep.image_url)} alt="">` : `<div class="thumb-bg thumb-bg-empty"></div>`}
           <span class="num">${d}</span>
           ${cards.length > 1 ? `<span class="count-badge">${cards.length}</span>` : ""}
@@ -2050,6 +2058,7 @@ function changeMonth(delta){
 
 /* ---------------- DAY VIEW: list of fiches for one day ---------------- */
 async function renderDay(dateStr){
+  state.directFiche = null;
   app.innerHTML = topbarHTML() + `
     <div class="page-title-row">
       <button class="back-btn" onclick="location.hash='#/'">‹</button>
@@ -2220,7 +2229,7 @@ async function renderFiche(cardId, dateForNew){
 
   app.innerHTML = topbarHTML() + `
     <div class="page-title-row">
-      <button class="back-btn" onclick="location.hash='#/jour/${dateStr}'">‹</button>
+      <button class="back-btn" onclick="ficheBack('${dateStr}')">‹</button>
       <h2>${formatFrDate(dateStr)}</h2>
     </div>
     <div class="card-box">
