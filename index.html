@@ -300,7 +300,7 @@
   :focus-visible{outline:3px solid var(--gold);outline-offset:2px;}
   mark{background:var(--gold-light);color:#232e15;border-radius:3px;padding:0 1px;}
   .toolbar-row{display:flex;gap:6px;flex-wrap:nowrap;margin-bottom:14px;}
-  .toolbar-row .btn{flex:1 1 auto;min-width:0;padding:8px 6px !important;font-size:13.5px;white-space:nowrap;}
+  .toolbar-row .btn{flex:1 1 auto;min-width:0;padding:8px 5px !important;font-size:13px;white-space:nowrap;}
   .trial-banner{display:block;background:var(--gold-light);color:var(--on-gold,#232e15);border-radius:10px;padding:9px 12px;font-size:13px;font-weight:600;text-align:center;margin:4px 0 12px;text-decoration:none;}
   .trial-banner.warn{background:#f3c9c0;color:#5a1d12;}
   .sub-wrap{max-width:480px;margin:0 auto;padding-bottom:30px;}
@@ -775,6 +775,145 @@ async function openBillingPortal(btn){
   }
 }
 
+/* ---------------- PARTAGE EN LECTURE SEULE ---------------- */
+const SHARE_DURATIONS = [["1h","1 heure"],["8h","8 heures"],["1d","1 jour"],["7d","1 semaine"],["unlimited","Illimité (jusqu'à ce que j'y mette fin)"]];
+
+async function openShareDialog(){
+  if (document.getElementById("share-overlay")) return;
+  const ov = document.createElement("div");
+  ov.className = "tutorial-overlay"; ov.id = "share-overlay";
+  const calName = state.currentClientId ? (state.currentClientName || "ce client") : "votre calendrier";
+  ov.innerHTML = `<div class="card-box" style="max-width:440px;width:100%;max-height:90vh;overflow:auto;">
+    <h3 style="margin-top:0;">Partager en lecture seule</h3>
+    <p style="font-size:14px;">Une personne (coach, collègue…) reçoit un lien par e-mail et voit <strong>${h(calName)}</strong> et ses fiches, <strong>sans pouvoir rien modifier</strong>, sans compte ni abonnement. Vous choisissez la durée et pouvez arrêter le partage à tout moment.</p>
+    <div id="sh-msg"></div>
+    <div class="field"><label>E-mail de la personne</label><input type="email" id="sh-email" placeholder="coach@exemple.fr" autocomplete="off"></div>
+    <div class="field"><label>Durée du partage</label>
+      <select id="sh-duration">${SHARE_DURATIONS.map(([v,l]) => `<option value="${v}" ${v==="7d"?"selected":""}>${h(l)}</option>`).join("")}</select></div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="btn outline" id="sh-close" style="flex:1;">Fermer</button>
+      <button class="btn gold" id="sh-send" style="flex:1;">Envoyer le lien</button>
+    </div>
+    <h4 style="margin:18px 0 6px;">Partages en cours</h4>
+    <div id="sh-list"><div class="spinner"></div></div></div>`;
+  document.body.appendChild(ov);
+  const close = () => ov.remove();
+  document.getElementById("sh-close").addEventListener("click", close);
+
+  async function loadList(){
+    const box = document.getElementById("sh-list"); if (!box) return;
+    let q = supabaseClient.from("calendar_shares").select("id,email,expires_at,last_viewed_at,created_at")
+      .is("revoked_at", null).order("created_at", { ascending: false });
+    q = state.currentClientId ? q.eq("client_id", state.currentClientId) : q.is("client_id", null);
+    const { data, error } = await q;
+    if (error) { box.innerHTML = `<div class="sub-muted">Liste indisponible.</div>`; return; }
+    const now = Date.now();
+    const act = (data || []).filter(r => !r.expires_at || new Date(r.expires_at).getTime() > now);
+    if (!act.length) { box.innerHTML = `<div class="sub-muted">Aucun partage en cours.</div>`; return; }
+    box.innerHTML = act.map(r => `
+      <div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line, #0001);">
+        <div style="flex:1;min-width:0;font-size:13px;overflow-wrap:anywhere;"><strong>${h(r.email)}</strong><br>
+          <span style="color:var(--muted);">${r.expires_at ? "jusqu'au " + h(new Date(r.expires_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })) : "sans limite"}${r.last_viewed_at ? " · vu le " + h(new Date(r.last_viewed_at).toLocaleDateString("fr-FR")) : " · pas encore ouvert"}</span></div>
+        <button class="btn danger" style="padding:6px 12px;flex:none;" data-stop="${h(r.id)}">Arrêter</button>
+      </div>`).join("");
+    box.querySelectorAll("[data-stop]").forEach(b => b.addEventListener("click", async () => {
+      if (!confirm("Arrêter ce partage ? Le lien ne fonctionnera plus immédiatement.")) return;
+      const { error: e } = await supabaseClient.rpc("revoke_calendar_share", { p_id: b.dataset.stop });
+      if (e) { alert(e.message); return; }
+      loadList();
+    }));
+  }
+  loadList();
+
+  document.getElementById("sh-send").addEventListener("click", async () => {
+    const email = document.getElementById("sh-email").value.trim();
+    const duration = document.getElementById("sh-duration").value;
+    const msg = document.getElementById("sh-msg");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { msg.innerHTML = `<div class="error-msg">Adresse e-mail invalide.</div>`; return; }
+    const btn = document.getElementById("sh-send"); btn.disabled = true; btn.textContent = "Envoi…";
+    const { data, error } = await supabaseClient.functions.invoke("share-create", { body: { email, duration, client_id: state.currentClientId || null } });
+    btn.disabled = false; btn.textContent = "Envoyer le lien";
+    if (error || !data || !data.ok) { msg.innerHTML = `<div class="error-msg">${h(await fnErrorMessage(error, data, "L'envoi a échoué. Réessayez."))}</div>`; return; }
+    msg.innerHTML = `<div class="ok-msg">Lien envoyé à ${h(email)}.</div>`;
+    document.getElementById("sh-email").value = "";
+    loadList();
+  });
+}
+
+async function renderShared(token){
+  const shell = inner => { app.innerHTML = `<header class="topbar"><a href="#/partage/${h(token)}" class="brand"><img src="${LOGO_DATA_URI}" alt="MADE"><span>MADE planificateur</span></a></header><div class="sub-wrap" style="max-width:640px;">${inner}</div>`; window.scrollTo(0, 0); };
+  shell(`<div class="center"><div class="spinner"></div></div>`);
+  const { data, error } = await supabaseClient.functions.invoke("share-view", { body: { token } });
+  if (error || !data || !data.ok) {
+    shell(`<h2 class="sub-title">Calendrier indisponible</h2><div class="card-box"><p>${h(await fnErrorMessage(error, data, "Impossible d'afficher ce calendrier pour le moment."))}</p></div>`);
+    return;
+  }
+  const cards = data.cards || [];
+  const byDay = {};
+  cards.forEach(c => { (byDay[c.card_date] = byDay[c.card_date] || []).push(c); });
+  const now = new Date();
+  let y = now.getFullYear(), m = now.getMonth(), selected = "";
+
+  function draw(){
+    const firstDow = (new Date(y, m, 1).getDay() + 6) % 7;
+    const dim = new Date(y, m + 1, 0).getDate();
+    const todayStr = fmtDate(now.getFullYear(), now.getMonth(), now.getDate());
+    let cells = "";
+    for (let i = 0; i < firstDow; i++) cells += `<div class="cal-day empty"></div>`;
+    for (let d = 1; d <= dim; d++) {
+      const ds = fmtDate(y, m, d), list = byDay[ds];
+      const sel = ds === selected ? "outline:3px solid var(--gold);" : "";
+      if (list && list.length) {
+        const sorted = list.slice().sort((a,b) => (a.post_time||"99:99").localeCompare(b.post_time||"99:99"));
+        const rep = sorted.find(c => c.image_url) || sorted[0];
+        const col = DOT_COLOR[rep.status] || DOT_COLOR.a_faire;
+        const icon = PLATFORM_ICON[rep.platform] || PLATFORM_ICON["Autre"];
+        cells += `<div class="cal-day has-thumb ${ds === todayStr ? "today" : ""}" style="border:2.5px solid ${col};${sel}" data-day="${ds}">
+          ${rep.image_url ? `<img class="thumb-bg" src="${h(rep.image_url)}" alt="">` : `<div class="thumb-bg thumb-bg-empty"></div>`}
+          <span class="num">${d}</span>${list.length > 1 ? `<span class="count-badge">${list.length}</span>` : ""}
+          <span class="platform-badge" style="background:${col}"><i class="${icon}"></i></span></div>`;
+      } else {
+        cells += `<div class="cal-day ${ds === todayStr ? "today" : ""}" style="${sel}" data-day="${ds}"><span class="num">${d}</span></div>`;
+      }
+    }
+    shell(`
+      <div class="card-box" style="margin-bottom:12px;">
+        <strong>${h(data.calendar_label)}</strong><br>
+        <span class="sub-muted">Partagé par ${h(data.owner_name)} · lecture seule${data.expires_at ? " · accès jusqu'au " + h(new Date(data.expires_at).toLocaleString("fr-FR", { dateStyle: "long", timeStyle: "short" })) : ""}</span>
+      </div>
+      <div class="month-nav"><button id="sh-prev" aria-label="Mois précédent">‹</button><h2>${MONTHS_FR[m]} ${y}</h2><button id="sh-next" aria-label="Mois suivant">›</button></div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--orange)"></span> À faire</span>
+        <span><span class="dot" style="background:var(--yellow)"></span> Programmé</span>
+        <span><span class="dot" style="background:var(--vert-ok)"></span> Posté</span>
+      </div>
+      <div class="cal-grid">${DOW_FR.map(d => `<div class="cal-dow">${d}</div>`).join("")}${cells}</div>
+      <div id="sh-detail" style="margin-top:14px;"></div>`);
+    document.getElementById("sh-prev").onclick = () => { m--; if (m < 0) { m = 11; y--; } selected = ""; draw(); };
+    document.getElementById("sh-next").onclick = () => { m++; if (m > 11) { m = 0; y++; } selected = ""; draw(); };
+    app.querySelectorAll("[data-day]").forEach(el => el.addEventListener("click", () => { selected = el.dataset.day; showDay(); }));
+    if (selected) showDay(true);
+  }
+
+  function showDay(keepScroll){
+    app.querySelectorAll("[data-day]").forEach(el => { el.style.outline = el.dataset.day === selected ? "3px solid var(--gold)" : ""; });
+    const box = document.getElementById("sh-detail");
+    const list = (byDay[selected] || []).slice().sort((a,b) => (a.post_time||"99:99").localeCompare(b.post_time||"99:99"));
+    box.innerHTML = `<h3 style="text-transform:none;">${h(formatFrDate(selected))}</h3>` + (list.length ? list.map(c => {
+      const imgs = (Array.isArray(c.image_urls) && c.image_urls.length ? c.image_urls : (c.image_url ? [c.image_url] : []));
+      const row = (label, val) => val ? `<p style="margin:8px 0 0;"><span class="sub-muted" style="font-size:12px;display:block;">${label}</span><span style="white-space:pre-wrap;overflow-wrap:anywhere;">${h(val)}</span></p>` : "";
+      return `<div class="card-box" style="margin-bottom:12px;">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><i class="${PLATFORM_ICON[c.platform] || PLATFORM_ICON["Autre"]}"></i>
+          <strong>${h(c.platform || "")}</strong><span>· ${h(c.format || "")}${c.category ? " · " + h(c.category) : ""}${c.post_time ? " · " + h(String(c.post_time).slice(0,5)) : ""}</span>
+          <span class="status-pill ${h(c.status)}" style="margin-left:auto;">${h(STATUS_LABEL[c.status] || "")}</span></div>
+        ${imgs.length ? `<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">${imgs.map(u => `<a href="${h(u)}" target="_blank" rel="noopener"><img src="${h(u)}" alt="Photo de la fiche" style="width:100%;border-radius:10px;display:block;"></a>`).join("")}</div>` : ""}
+        ${row("Description", c.description)}${row("Hashtags", c.hashtags)}${row("Observations", c.observation)}</div>`;
+    }).join("") : `<div class="empty-state">Aucune fiche ce jour-là.</div>`);
+    if (!keepScroll) box.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  draw();
+}
+
 /* ---------------- TRANSFERT D'UN CALENDRIER CLIENT ---------------- */
 const TRANSFER_KEY = "made_pending_transfer";
 function getPendingTransfer(){ try { return localStorage.getItem(TRANSFER_KEY) || ""; } catch(e) { return state.pendingTransfer || ""; } }
@@ -948,6 +1087,11 @@ async function route(){
   if (hash === "#/confidentialite") return renderLegal("privacy");
   if (hash === "#/cgu") return renderLegal("cgu");
   if (hash === "#/cgv") return renderLegal("cgv");
+  if (hash.startsWith("#/partage/")) {
+    const tk = hash.slice("#/partage/".length).split("?")[0];
+    if (/^[0-9a-f]{40,}$/.test(tk)) return renderShared(tk);
+    location.hash = "#/"; return;
+  }
   if (state.emailConfirmed && !state.session) return renderEmailConfirmed();
   if (state.recovery && state.session) return renderResetPassword();
   if (!state.session) {
@@ -1714,6 +1858,7 @@ function tutorialHTML(){
         <li>Couleurs : <strong style="color:var(--orange);">orange</strong> à faire, <strong style="color:#9a7400;">jaune</strong> programmé, <strong style="color:var(--vert-ok);">vert</strong> posté.</li>
         <li><strong>Mois / Quinzaine / Semaine</strong> changent la vue : en semaine et quinzaine, les photos s'affichent en plus grand.</li>
         <li><strong>Aujourd'hui</strong> revient au mois en cours, <strong>À faire</strong> liste toutes vos tâches non terminées, <strong>Corbeille</strong> restaure une fiche supprimée par erreur (récupérable une semaine), la loupe <strong>🔍</strong> cherche dans vos fiches.</li>
+        <li><strong>👁 Partager</strong> : envoyez par e-mail un lien en lecture seule à votre coach (durée au choix : 1 h à illimité). Il voit votre calendrier sans pouvoir rien modifier, et vous pouvez arrêter le partage quand vous voulez.</li>
         <li><strong>Déplacer une fiche</strong> : maintenez le doigt dessus, puis glissez-la sur un autre jour (un message permet d'annuler).</li>
         <li><strong>Dans une fiche</strong> : plusieurs photos (glissez pour les faire défiler), liste de tâches à cocher, bouton vers votre page sur le réseau choisi. Vous pouvez aussi la <strong>dupliquer</strong>, la <strong>déplacer</strong> ou la mettre à la <strong>corbeille</strong>.</li>
         <li><strong>En haut</strong> : touchez le logo et votre photo pour ouvrir votre profil (photo, réseaux sociaux, mot de passe, thème clair/sombre, déconnexion). Le bouton à droite permet de changer de calendrier si vous gérez plusieurs clients.</li>
@@ -1783,7 +1928,8 @@ function homeToolbarHTML(){
       <button class="btn outline" style="padding:8px 14px;" onclick="goToday()">📅 Aujourd'hui</button>
       <button class="btn outline" style="padding:8px 14px;" onclick="location.hash='#/a-faire'">📝 À faire<span class="task-badge" id="task-badge"></span></button>
       <button class="btn outline" style="padding:8px 14px;" onclick="location.hash='#/corbeille'">🗑 Corbeille</button>
-      <button class="btn outline" style="padding:8px 12px;flex:none;" onclick="location.hash='#/recherche'" aria-label="Rechercher une fiche" title="Rechercher">🔍</button>
+      <button class="btn outline" style="padding:8px 9px !important;flex:none;" onclick="location.hash='#/recherche'" aria-label="Rechercher une fiche" title="Rechercher">🔍</button>
+      <button class="btn outline" style="padding:8px 9px !important;flex:none;" onclick="openShareDialog()" aria-label="Partager en lecture seule" title="Partager en lecture seule">👁</button>
     </div>
     <div class="legend">
       <span><span class="dot" style="background:var(--orange)"></span> À faire</span>
@@ -2978,7 +3124,7 @@ function legalMentionsHTML(){
     <ul>
       <li><strong>Application web :</strong> Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, États-Unis (cloudflare.com).</li>
       <li><strong>Base de données, authentification et fichiers :</strong> Supabase, Inc. (supabase.com)${L.dbRegion ? `, données hébergées dans ${h(L.dbRegion)}` : ""}.</li>
-      <li><strong>Envoi des e-mails (confirmation de compte, réinitialisation du mot de passe, invitations de transfert de calendrier) :</strong> Resend, Inc., États-Unis (resend.com). Il reçoit votre adresse e-mail et le contenu du message pour l'acheminer.</li>
+      <li><strong>Envoi des e-mails (confirmation de compte, réinitialisation du mot de passe, invitations de transfert de calendrier, liens de partage en lecture seule) :</strong> Resend, Inc., États-Unis (resend.com). Il reçoit votre adresse e-mail et le contenu du message pour l'acheminer.</li>
     </ul>
 
     <h3>Propriété intellectuelle</h3>
@@ -3021,7 +3167,7 @@ function legalPrivacyHTML(){
 
     <h3>4. Qui y a accès ?</h3>
     <ul>
-      <li><strong>Vous seul·e</strong> voyez vos fiches, vos photos et vos clients : chaque compte est cloisonné.</li>
+      <li><strong>Vous seul·e</strong> voyez vos fiches, vos photos et vos clients : chaque compte est cloisonné, sauf si vous choisissez de partager un calendrier en lecture seule par lien (durée limitée ou non, arrêt possible à tout moment).</li>
       <li>Les administrateurs de ${h(L.name)} voient la liste des comptes (nom, e-mail, photo de profil, espace de stockage utilisé), pas le contenu de vos fiches dans l'application.</li>
       <li><strong>Nos prestataires techniques</strong> traitent les données pour notre compte : Supabase (base de données, authentification, stockage des fichiers), Cloudflare (hébergement de l'application, vérification anti-robot) Resend (envoi des e-mails de connexion) et Stripe, Inc. (paiement des abonnements et factures). Des bibliothèques d'affichage sont aussi chargées depuis les services jsDelivr et cdnjs (Cloudflare), ce qui leur transmet votre adresse IP comme pour tout site web.</li>
     </ul>
@@ -3071,6 +3217,9 @@ function legalCguHTML(){
 
     <h3>2 bis. Transfert d'un calendrier client</h3>
     <p>Un Community Manager peut proposer à l'un de ses clients de reprendre son calendrier. Le client reçoit un e-mail contenant un lien valable 14 jours ; il doit disposer d'un compte et d'un abonnement (formule Basique au minimum) pour l'accepter. Le Community Manager reste seul décideur de l'envoi et peut annuler tant que le client n'a pas accepté. Une fois le transfert accepté, les fiches, tâches et photos du calendrier sont déplacées dans le compte du client et ne sont <strong>plus conservées</strong> dans le compte du Community Manager. Le transfert est définitif.</p>
+
+    <h3>2 ter. Partage en lecture seule</h3>
+    <p>Un abonné peut envoyer par e-mail un lien donnant accès, en lecture seule, à son calendrier et à ses fiches (photos comprises) à la personne de son choix, sans que celle-ci ait besoin d'un compte ni d'un abonnement. L'abonné choisit la durée (1 heure, 8 heures, 1 jour, 1 semaine ou illimitée) et peut arrêter le partage à tout moment ; l'arrêt est immédiat. Toute personne disposant du lien peut consulter le calendrier : l'abonné veille à ne l'envoyer qu'à des personnes de confiance et à disposer des droits nécessaires sur les contenus partagés.</p>
 
     <h3>3. Votre compte</h3>
     <ul>
