@@ -197,7 +197,7 @@
     background:var(--white);border:1.5px solid var(--line2);color:var(--green);border-radius:8px;
     width:36px;height:36px;cursor:pointer;font-size:16px;font-weight:700;
   }
-  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;font-size:13px;color:var(--muted);}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin:14px 0 6px;font-size:13px;color:var(--muted);}
   .legend span{display:inline-flex;align-items:center;gap:6px;}
   .dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
   .cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;width:100%;box-sizing:border-box;}
@@ -216,7 +216,7 @@
   .cal-day.today.has-thumb{box-shadow:0 0 0 3px var(--gold);}
   .cal-day.today.has-thumb .num{background:var(--gold);color:var(--on-gold);}
   .cal-day .dots{display:flex;gap:3px;position:relative;z-index:2;}
-  .cal-day .dots .dot{width:6px;height:6px;}
+  .cal-day .dots .dot{width:10px;height:10px;border:1.5px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25);box-sizing:border-box;}
   .cal-day.status-orange{background:#ffd2b0;border-color:var(--orange);border-width:2px;}
   .cal-day.status-yellow{background:#fff0a0;border-color:var(--yellow);border-width:2px;}
   .cal-day.status-green{background:#cdebc9;border-color:var(--vert-ok);border-width:2px;}
@@ -232,7 +232,7 @@
   }
   .count-badge{
     position:absolute;top:2px;right:2px;background:rgba(35,46,21,.75);color:#fff;
-    font-size:9px;font-weight:700;border-radius:999px;padding:1px 5px;z-index:2;
+    font-size:12px;font-weight:800;border-radius:999px;padding:1px 6px;min-width:18px;text-align:center;box-sizing:border-box;z-index:2;
   }
   [data-drag-card],[data-drag-multi]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
   [data-drag-card] img,[data-drag-multi] img{-webkit-user-drag:none;}
@@ -339,8 +339,22 @@
     background:var(--white);color:var(--green-dark);font-size:14px;font-weight:700;cursor:pointer;display:none;align-items:center;gap:6px;
     box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:60;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .home-fab.show{display:flex;}
+  .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:70;display:none;align-items:flex-end;justify-content:space-around;
+    background:var(--white);border-top:1.5px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+    box-shadow:0 -4px 14px rgba(0,0,0,.12);}
+  .tabbar.show{display:flex;}
+  .tabbar .tab{position:relative;flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    border:none;background:transparent;color:var(--muted);font:inherit;font-size:10px;font-weight:600;padding:6px 0 2px;cursor:pointer;}
+  .tabbar .tab svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+  .tabbar .tab:hover,.tabbar .tab:focus-visible{color:var(--green-dark);outline:none;}
+  .tabbar .tab-add{flex:0 0 64px;color:var(--on-gold);}
+  .tabbar .tab-add .plus{width:52px;height:52px;margin-top:-22px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;
+    box-shadow:0 4px 12px rgba(0,0,0,.3);border:3px solid var(--white);box-sizing:border-box;}
+  .tabbar .tab-add svg{stroke:var(--on-gold);stroke-width:2.4;width:26px;height:26px;}
+  .tabbar .task-badge{position:absolute;top:0;left:calc(50% + 4px);margin:0;}
+  body.has-tabbar #app{padding-bottom:96px;}
   body.has-home-fab #app{padding-bottom:84px;}
-  .upcoming{margin:22px 0 90px;text-align:left;}
+  .upcoming{display:none;margin:22px 0 90px;text-align:left;}
   .upcoming h3{color:var(--green-dark);font-size:15px;margin:0 0 10px;}
   .up-row{display:flex;align-items:center;gap:10px;background:var(--white);border:1.5px solid var(--line);border-radius:10px;
     padding:10px 12px;margin-bottom:8px;cursor:pointer;font-size:14px;}
@@ -1127,6 +1141,7 @@ function updateHomeFab(){
 }
 
 async function route(){
+  hideTabbar();
   updateHomeFab();
   setTimeout(updateHomeFab, 500); // le calendrier actif (client) peut être restauré un peu plus tard
   const hash = location.hash || "#/";
@@ -1754,41 +1769,11 @@ async function renderHome(){
       ${DOW_FR.map(d => `<div class="cal-dow">${d}</div>`).join("")}
       ${cells}
     </div>
-    <div class="upcoming" id="upcoming"></div>
-    <button class="fab" title="Ajouter une fiche" aria-label="Ajouter une fiche" onclick="location.hash='#/fiche/nouvelle/${(y === today.getFullYear() && m === today.getMonth()) ? todayStr : fmtDate(y, m, 1)}'">+</button>
+    ${legendHTML()}
   `;
-  loadUpcoming(todayStr);
+  showTabbar();
   refreshTaskBadge();
   maybeShowTutorial();
-}
-
-async function loadUpcoming(todayStr){
-  const box = document.getElementById("upcoming");
-  if (!box) return;
-  let q = supabaseClient.from("content_cards")
-    .select("id, card_date, status, platform, post_time")
-    .is("deleted_at", null)
-    .gte("card_date", todayStr)
-    .in("status", ["a_faire", "programme"])
-    .order("card_date", { ascending: true })
-    .order("post_time", { ascending: true })
-    .limit(3);
-  q = scopeToCurrentCalendar(q);
-  const { data, error } = await q;
-  const box2 = document.getElementById("upcoming");
-  if (!box2 || error) { if (box2) box2.innerHTML = ""; return; }
-  const rows = (data || []).map(c => {
-    const icon = PLATFORM_ICON[c.platform] || PLATFORM_ICON["Autre"];
-    const p = String(c.card_date).split("-").map(Number);
-    const d = new Date(p[0], p[1] - 1, p[2]);
-    return `<div class="up-row" onclick="location.hash='#/fiche/${h(c.id)}'">
-      <i class="${icon}"></i>
-      <span class="up-date">${DOW_LONG[d.getDay()]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}</span>
-      ${c.post_time ? `<span class="up-time">${h(String(c.post_time).slice(0,5))}</span>` : ""}
-      <span class="status-pill ${h(c.status)}">${h(STATUS_LABEL[c.status] || "")}</span>
-    </div>`;
-  }).join("");
-  box2.innerHTML = `<h3>Prochaines publications</h3>` + (rows || `<div class="up-none">Rien de prévu pour l'instant.</div>`);
 }
 
 /* ---------------- GLISSER-DÉPOSER (souris et tactile) ---------------- */
@@ -1978,21 +1963,57 @@ function viewSwitcherHTML(){
     </div>`;
 }
 
-function homeToolbarHTML(){
-  return `
-    ${trialBannerHTML()}
-    <div class="toolbar-row">
-      <button class="btn outline" onclick="goToday()" aria-label="Aujourd'hui" title="Aujourd'hui">📅</button>
-      <button class="btn outline" onclick="location.hash='#/a-faire'" aria-label="Liste À faire" title="À faire">📝<span class="task-badge" id="task-badge"></span></button>
-      <button class="btn outline" onclick="location.hash='#/corbeille'" aria-label="Corbeille" title="Corbeille">🗑</button>
-      <button class="btn outline" onclick="location.hash='#/recherche'" aria-label="Rechercher une fiche" title="Rechercher">🔍</button>
-      <button class="btn outline" onclick="openShareDialog()" aria-label="Partager en lecture seule" title="Partager en lecture seule">👁</button>
-    </div>
-    <div class="legend">
+function legendHTML(){
+  return `<div class="legend">
       <span><span class="dot" style="background:var(--orange)"></span> À faire</span>
       <span><span class="dot" style="background:var(--yellow)"></span> Programmé</span>
       <span><span class="dot" style="background:var(--vert-ok)"></span> Posté</span>
     </div>`;
+}
+
+function homeToolbarHTML(){
+  return trialBannerHTML();
+}
+
+/* Barre d'onglets en bas de l'accueil : à faire · recherche · aujourd'hui · nouvelle fiche · partage · corbeille */
+function ensureTabbar(){
+  let t = document.getElementById("home-tabbar");
+  if (t) return t;
+  const ic = {
+    todo:  '<svg viewBox="0 0 24 24"><rect x="4" y="3.5" width="16" height="17" rx="2.5"/><path d="M8.5 9.5l1.7 1.7 3.3-3.4M8.5 15.5h7"/></svg>',
+    search:'<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>',
+    today: '<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/><circle cx="12" cy="15" r="1.4" fill="currentColor"/></svg>',
+    plus:  '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+    share: '<svg viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg>',
+    trash: '<svg viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l.8 12.5h9.4L17.5 7M10 11v5M14 11v5"/></svg>'
+  };
+  t = document.createElement("nav");
+  t.id = "home-tabbar"; t.className = "tabbar"; t.setAttribute("aria-label", "Navigation principale");
+  t.innerHTML = `
+    <button class="tab" type="button" data-act="todo" aria-label="Tâches à faire">${ic.todo}<span class="task-badge" id="task-badge"></span></button>
+    <button class="tab" type="button" data-act="search" aria-label="Rechercher une fiche">${ic.search}</button>
+    <button class="tab" type="button" data-act="today" aria-label="Aujourd'hui">${ic.today}</button>
+    <button class="tab tab-add" type="button" data-act="add" aria-label="Créer une fiche pour aujourd'hui"><span class="plus">${ic.plus}</span></button>
+    <button class="tab" type="button" data-act="share" aria-label="Partager en lecture seule">${ic.share}</button>
+    <button class="tab" type="button" data-act="trash" aria-label="Corbeille">${ic.trash}</button>`;
+  t.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    const a = b.dataset.act;
+    if (a === "todo") location.hash = "#/a-faire";
+    else if (a === "search") location.hash = "#/recherche";
+    else if (a === "today") goToday();
+    else if (a === "add") { const n = new Date(); location.hash = "#/fiche/nouvelle/" + fmtDate(n.getFullYear(), n.getMonth(), n.getDate()); }
+    else if (a === "share") openShareDialog();
+    else if (a === "trash") location.hash = "#/corbeille";
+  });
+  document.body.appendChild(t);
+  return t;
+}
+function showTabbar(){ ensureTabbar().classList.add("show"); document.body.classList.add("has-tabbar"); }
+function hideTabbar(){
+  const t = document.getElementById("home-tabbar");
+  if (t) t.classList.remove("show");
+  document.body.classList.remove("has-tabbar");
 }
 
 function setViewMode(mode){
@@ -2090,9 +2111,9 @@ async function renderRangeView(){
     </div>
     ${homeToolbarHTML()}
     ${error ? `<div class="error-msg">${h(error.message)}</div>` : blocks}
-    <button class="fab" title="Ajouter une fiche" aria-label="Ajouter une fiche" style="bottom:22px;" onclick="location.hash='#/fiche/nouvelle/${(todayStr >= dateStrOf(start) && todayStr <= dateStrOf(end)) ? todayStr : dateStrOf(start)}'">+</button>
-    <div style="height:80px;"></div>
+    ${legendHTML()}
   `;
+  showTabbar();
   refreshTaskBadge();
   maybeShowTutorial();
 }
@@ -2153,9 +2174,9 @@ async function renderListView(){
     ${homeToolbarHTML()}
     <div class="ls-chips" id="ls-chips">${chips.map(([k,l]) => `<button type="button" class="ls-chip ${filter === k ? "active" : ""}" data-f="${k}">${l}</button>`).join("")}</div>
     ${error ? `<div class="error-msg">${h(error.message)}</div>` : `<div id="ls-list">${listHTML()}</div>`}
-    <button class="fab" title="Ajouter une fiche" aria-label="Ajouter une fiche" onclick="location.hash='#/fiche/nouvelle/${todayStr.slice(0,7) === first.slice(0,7) ? todayStr : first}'">+</button>
-    <div style="height:80px;"></div>
+    ${legendHTML()}
   `;
+  showTabbar();
   const box = document.getElementById("ls-list");
   function scrollToUpcoming(){
     if (todayStr.slice(0,7) !== first.slice(0,7)) return;
