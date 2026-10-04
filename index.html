@@ -300,7 +300,8 @@
   :focus-visible{outline:3px solid var(--gold);outline-offset:2px;}
   mark{background:var(--gold-light);color:#232e15;border-radius:3px;padding:0 1px;}
   .toolbar-row{display:flex;gap:6px;flex-wrap:nowrap;margin-bottom:14px;}
-  .toolbar-row .btn{flex:1 1 auto;min-width:0;padding:8px 5px !important;font-size:13px;white-space:nowrap;}
+  .toolbar-row .btn{flex:1 1 0;min-width:0;padding:9px 4px !important;font-size:19px;line-height:1.2;white-space:nowrap;position:relative;}
+  .toolbar-row .task-badge{position:absolute;top:-6px;right:-4px;}
   .trial-banner{display:block;background:var(--gold-light);color:var(--on-gold,#232e15);border-radius:10px;padding:9px 12px;font-size:13px;font-weight:600;text-align:center;margin:4px 0 12px;text-decoration:none;}
   .trial-banner.warn{background:#f3c9c0;color:#5a1d12;}
   .sub-wrap{max-width:480px;margin:0 auto;padding-bottom:30px;}
@@ -349,6 +350,10 @@
   .view-switch{display:flex;background:var(--white);border:1.5px solid var(--line2);border-radius:10px;overflow:hidden;margin-bottom:12px;}
   .view-switch button{flex:1;border:none;background:transparent;padding:10px 6px;font-weight:700;color:var(--green);cursor:pointer;font-size:14px;}
   .view-switch button.active{background:var(--green);color:var(--on-green);}
+  .ls-chips{display:flex;gap:6px;margin:0 0 12px;flex-wrap:wrap;}
+  .ls-chip{border:1.5px solid var(--line2);background:var(--white);color:var(--green);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;}
+  .ls-chip.active{background:var(--green);color:var(--on-green);border-color:var(--green);}
+  .ls-day{margin-bottom:14px;}
   .rg-day{margin-bottom:18px;}
   .rg-day-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
   .rg-day-title{font-weight:800;color:var(--green-dark);text-transform:capitalize;cursor:pointer;font-size:15px;}
@@ -357,7 +362,6 @@
   .rg-none{color:var(--muted);font-size:13px;padding:2px 0 4px;}
   .rg-grid{display:grid;gap:12px;}
   .rg-grid.week{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));}
-  .rg-grid.fortnight{grid-template-columns:repeat(auto-fill,minmax(100px,1fr));}
   .rg-card{cursor:pointer;display:flex;flex-direction:column;gap:6px;align-items:flex-start;}
   .rg-thumb{position:relative;width:100%;aspect-ratio:4/5;border:3px solid;border-radius:12px;overflow:hidden;background:var(--beige);}
   .rg-thumb img{width:100%;height:100%;object-fit:contain;display:block;}
@@ -498,12 +502,13 @@ let state = {
   turnstileWidgetId: null,
   currentClientId: null, // null = calendrier personnel ; sinon = calendrier du "Client" (mode Community Manager) sélectionné
   currentClientName: null,
-  viewMode: "month",     // "month" | "fortnight" | "week"
-  anchorDate: null       // date de référence pour les vues semaine / quinzaine
+  viewMode: "month",     // "month" | "week" | "list"
+  anchorDate: null       // date de référence pour la vue semaine
 };
 try {
   const vm = localStorage.getItem("made_view_mode");
-  if (["month","fortnight","week"].includes(vm)) state.viewMode = vm;
+  if (["month","week","list"].includes(vm)) state.viewMode = vm;
+  else if (vm === "fortnight") state.viewMode = "week";   // la vue « quinzaine » a été retirée
 } catch(e) { /* localStorage indisponible */ }
 
 const app = document.getElementById("app");
@@ -1678,7 +1683,8 @@ function ficheBack(dateStr){
 
 async function renderHome(){
   state.directFiche = null;
-  if (state.viewMode !== "month") return renderRangeView();
+  if (state.viewMode === "week") return renderRangeView();
+  if (state.viewMode === "list") return renderListView();
   app.innerHTML = topbarHTML() + `<div id="cal-wrap" class="center"><div class="spinner"></div></div>`;
   await loadMonthCards();
 
@@ -1907,8 +1913,8 @@ function tutorialHTML(){
       <ul>
         <li><strong>Le calendrier</strong> : touchez un jour pour voir ou créer du contenu. Le chiffre sur une case = nombre de fiches ce jour-là ; les petits points = les autres statuts présents le même jour.</li>
         <li>Couleurs : <strong style="color:var(--orange);">orange</strong> à faire, <strong style="color:#9a7400;">jaune</strong> programmé, <strong style="color:var(--vert-ok);">vert</strong> posté.</li>
-        <li><strong>Mois / Quinzaine / Semaine</strong> changent la vue : en semaine et quinzaine, les photos s'affichent en plus grand.</li>
-        <li><strong>Aujourd'hui</strong> revient au mois en cours, <strong>À faire</strong> liste toutes vos tâches non terminées, <strong>Corbeille</strong> restaure une fiche supprimée par erreur (récupérable une semaine), la loupe <strong>🔍</strong> cherche dans vos fiches.</li>
+        <li><strong>Mois / Semaine / Liste</strong> changent la vue : en semaine, les photos s'affichent en plus grand ; en liste, vos fiches du mois défilent jour par jour (avec un filtre par statut).</li>
+        <li>Les boutons sous le calendrier : <strong>📅</strong> revient à aujourd'hui, <strong>📝</strong> liste toutes vos tâches non terminées, <strong>🗑</strong> restaure une fiche supprimée par erreur (récupérable une semaine), <strong>🔍</strong> cherche dans vos fiches.</li>
         <li><strong>👁 Partager</strong> : envoyez par e-mail un lien en lecture seule à votre coach (durée au choix : 1 h à illimité). Il voit votre calendrier sans pouvoir rien modifier, et vous pouvez arrêter le partage quand vous voulez.</li>
         <li><strong>Déplacer une fiche</strong> : maintenez le doigt dessus, puis glissez-la sur un autre jour (un message permet d'annuler).</li>
         <li><strong>Dans une fiche</strong> : plusieurs photos (glissez pour les faire défiler), liste de tâches à cocher, bouton vers votre page sur le réseau choisi. Vous pouvez aussi la <strong>dupliquer</strong>, la <strong>déplacer</strong> ou la mettre à la <strong>corbeille</strong>.</li>
@@ -1967,8 +1973,8 @@ function viewSwitcherHTML(){
   return `
     <div class="view-switch">
       <button class="${m === "month" ? "active" : ""}" onclick="setViewMode('month')">Mois</button>
-      <button class="${m === "fortnight" ? "active" : ""}" onclick="setViewMode('fortnight')">Quinzaine</button>
       <button class="${m === "week" ? "active" : ""}" onclick="setViewMode('week')">Semaine</button>
+      <button class="${m === "list" ? "active" : ""}" onclick="setViewMode('list')">Liste</button>
     </div>`;
 }
 
@@ -1976,11 +1982,11 @@ function homeToolbarHTML(){
   return `
     ${trialBannerHTML()}
     <div class="toolbar-row">
-      <button class="btn outline" style="padding:8px 14px;" onclick="goToday()">📅 Aujourd'hui</button>
-      <button class="btn outline" style="padding:8px 14px;" onclick="location.hash='#/a-faire'">📝 À faire<span class="task-badge" id="task-badge"></span></button>
-      <button class="btn outline" style="padding:8px 14px;" onclick="location.hash='#/corbeille'">🗑 Corbeille</button>
-      <button class="btn outline" style="padding:8px 9px !important;flex:none;" onclick="location.hash='#/recherche'" aria-label="Rechercher une fiche" title="Rechercher">🔍</button>
-      <button class="btn outline" style="padding:8px 9px !important;flex:none;" onclick="openShareDialog()" aria-label="Partager en lecture seule" title="Partager en lecture seule">👁</button>
+      <button class="btn outline" onclick="goToday()" aria-label="Aujourd'hui" title="Aujourd'hui">📅</button>
+      <button class="btn outline" onclick="location.hash='#/a-faire'" aria-label="Liste À faire" title="À faire">📝<span class="task-badge" id="task-badge"></span></button>
+      <button class="btn outline" onclick="location.hash='#/corbeille'" aria-label="Corbeille" title="Corbeille">🗑</button>
+      <button class="btn outline" onclick="location.hash='#/recherche'" aria-label="Rechercher une fiche" title="Rechercher">🔍</button>
+      <button class="btn outline" onclick="openShareDialog()" aria-label="Partager en lecture seule" title="Partager en lecture seule">👁</button>
     </div>
     <div class="legend">
       <span><span class="dot" style="background:var(--orange)"></span> À faire</span>
@@ -1993,7 +1999,7 @@ function setViewMode(mode){
   state.viewMode = mode;
   try { localStorage.setItem("made_view_mode", mode); } catch(e) {}
   const now = new Date();
-  if (mode !== "month") {
+  if (mode === "week") {
     // on se cale sur le mois affiché : aujourd'hui si c'est le mois en cours, sinon le 1er du mois
     state.anchorDate = (state.viewYear === now.getFullYear() && state.viewMonth === now.getMonth())
       ? now : new Date(state.viewYear, state.viewMonth, 1);
@@ -2005,8 +2011,7 @@ function setViewMode(mode){
 }
 
 function shiftRange(dir){
-  const step = state.viewMode === "week" ? 7 : 14;
-  state.anchorDate = addDays(state.anchorDate || new Date(), dir * step);
+  state.anchorDate = addDays(state.anchorDate || new Date(), dir * 7);
   renderHome();
 }
 
@@ -2031,7 +2036,7 @@ function rangeCardHTML(c){
 async function renderRangeView(){
   app.innerHTML = topbarHTML() + `<div id="cal-wrap"><div class="center"><div class="spinner"></div></div></div>`;
 
-  const days = state.viewMode === "week" ? 7 : 14;
+  const days = 7;
   if (!state.anchorDate) state.anchorDate = new Date();
   const start = startOfWeek(state.anchorDate);
   const end = addDays(start, days - 1);
@@ -2071,7 +2076,7 @@ async function renderRangeView(){
           <button class="btn outline rg-add" onclick="location.hash='#/fiche/nouvelle/${ds}'" title="Ajouter une fiche">+</button>
         </div>
         ${cards.length
-          ? `<div class="rg-grid ${state.viewMode}">${cards.map(rangeCardHTML).join("")}</div>`
+          ? `<div class="rg-grid week">${cards.map(rangeCardHTML).join("")}</div>`
           : `<div class="rg-none">Rien de prévu</div>`}
       </section>`;
   }
@@ -2090,6 +2095,81 @@ async function renderRangeView(){
   `;
   refreshTaskBadge();
   maybeShowTutorial();
+}
+
+/* ---------------- VUE LISTE ---------------- */
+async function renderListView(){
+  app.innerHTML = topbarHTML() + `<div id="cal-wrap"><div class="center"><div class="spinner"></div></div></div>`;
+  const y = state.viewYear, m = state.viewMonth;
+  const first = fmtDate(y, m, 1), last = fmtDate(y, m, new Date(y, m + 1, 0).getDate());
+  let query = supabaseClient.from("content_cards")
+    .select("id, card_date, status, platform, format, post_time, description, image_url, image_urls")
+    .is("deleted_at", null).gte("card_date", first).lte("card_date", last)
+    .order("card_date", { ascending: true }).order("post_time", { ascending: true });
+  query = scopeToCurrentCalendar(query);
+  const { data, error } = await query;
+  const cards = data || [];
+  let filter = state.listFilter || "all";
+  const todayStr = dateStrOf(new Date());
+
+  function listHTML(){
+    const shown = cards.filter(c => filter === "all" || c.status === filter);
+    if (!shown.length) return `<div class="empty-state">${cards.length ? "Aucune fiche avec ce statut ce mois-ci." : "Aucune fiche ce mois-ci."}</div>`;
+    const byDay = {};
+    shown.forEach(c => { (byDay[c.card_date] = byDay[c.card_date] || []).push(c); });
+    return Object.keys(byDay).sort().map(ds => {
+      const [yy, mm, dd] = ds.split("-").map(Number);
+      const d = new Date(yy, mm - 1, dd);
+      return `
+      <section class="ls-day" data-ls-day="${ds}">
+        <div class="rg-day-head">
+          <span class="rg-day-title" onclick="location.hash='#/jour/${ds}'">${DOW_LONG[d.getDay()]} ${dd} ${MONTHS_SHORT[mm - 1]}${ds === todayStr ? `<span class="rg-today">Aujourd'hui</span>` : ""}</span>
+          <button class="btn outline rg-add" onclick="location.hash='#/fiche/nouvelle/${ds}'" title="Ajouter une fiche" aria-label="Ajouter une fiche ce jour">+</button>
+        </div>
+        ${byDay[ds].map(c => {
+          const img = cardImageUrls(c)[0];
+          return `
+          <div class="fiche-item" onclick="location.hash='#/fiche/${h(c.id)}'">
+            ${img ? `<img class="thumb" ${pimg(img)} loading="lazy" alt="">` : `<div class="thumb"></div>`}
+            <div class="info" style="text-align:left;min-width:0;">
+              <div class="l1"><i class="${PLATFORM_ICON[c.platform] || PLATFORM_ICON["Autre"]}"></i> ${h(c.platform || "")} · ${h(c.format || "")}${c.post_time ? " · " + h(String(c.post_time).slice(0,5)) : ""}</div>
+              <div class="l2">${h(c.description || "Sans description")}</div>
+            </div>
+            <span class="status-pill ${h(c.status)}">${h(STATUS_LABEL[c.status] || "")}</span>
+          </div>`;
+        }).join("")}
+      </section>`;
+    }).join("");
+  }
+
+  const chips = [["all","Toutes"],["a_faire","À faire"],["programme","Programmé"],["publie","Posté"]];
+  document.getElementById("cal-wrap").innerHTML = `
+    ${viewSwitcherHTML()}
+    <div class="month-nav">
+      <button onclick="changeMonth(-1)">‹</button>
+      <h2>${MONTHS_FR[m]} ${y}</h2>
+      <button onclick="changeMonth(1)">›</button>
+    </div>
+    ${homeToolbarHTML()}
+    <div class="ls-chips" id="ls-chips">${chips.map(([k,l]) => `<button type="button" class="ls-chip ${filter === k ? "active" : ""}" data-f="${k}">${l}</button>`).join("")}</div>
+    ${error ? `<div class="error-msg">${h(error.message)}</div>` : `<div id="ls-list">${listHTML()}</div>`}
+    <button class="fab" title="Ajouter une fiche" aria-label="Ajouter une fiche" onclick="location.hash='#/fiche/nouvelle/${todayStr.slice(0,7) === first.slice(0,7) ? todayStr : first}'">+</button>
+    <div style="height:80px;"></div>
+  `;
+  const box = document.getElementById("ls-list");
+  function scrollToUpcoming(){
+    if (todayStr.slice(0,7) !== first.slice(0,7)) return;
+    const next = [...document.querySelectorAll("[data-ls-day]")].find(e => e.dataset.lsDay >= todayStr);
+    if (next) next.scrollIntoView({ block: "start" });
+  }
+  document.querySelectorAll("#ls-chips .ls-chip").forEach(b => b.addEventListener("click", () => {
+    filter = b.dataset.f; state.listFilter = filter;
+    document.querySelectorAll("#ls-chips .ls-chip").forEach(x => x.classList.toggle("active", x === b));
+    if (box) { box.innerHTML = listHTML(); hydratePrivateImages(); }
+  }));
+  refreshTaskBadge();
+  maybeShowTutorial();
+  if (state.listScroll !== false) setTimeout(scrollToUpcoming, 50);
 }
 
 function changeMonth(delta){
