@@ -3820,6 +3820,8 @@ async function deleteMyAccount(){
   await removeUserStorageFiles(uid);                       // 1) fichiers
   const { error } = await supabaseClient.rpc("delete_my_account"); // 2) données + compte
   if (error) throw error;
+  // 3) e-mail de confirmation (facultatif : un échec ne change rien, le compte est déjà supprimé)
+  try { await supabaseClient.functions.invoke("account-deleted-mail", { body: { name: ((state.profile && state.profile.full_name) || "").split(" ")[0] } }); } catch(e) { /* ignoré */ }
   try { await supabaseClient.auth.signOut({ scope: "local" }); } catch(e) { /* le compte n'existe déjà plus */ }
   try {
     localStorage.removeItem(`made_current_client_${uid}`);
