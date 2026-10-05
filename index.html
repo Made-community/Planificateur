@@ -793,6 +793,30 @@ async function startCheckout(tier, interval, btn){
   }
 }
 
+async function changePlan(tier, interval, btn, before){
+  const msg = document.getElementById("sub-msg");
+  msg.innerHTML = "";
+  const plan = planById(tier);
+  if (!confirm(`Passer à la formule ${plan ? plan.name : tier} (${plan ? (interval === "year" ? plan.yearly : plan.monthly) : ""}) ?`)) return;
+  const old = btn.textContent; btn.disabled = true; btn.textContent = "Changement en cours...";
+  try {
+    const { data, error } = await supabaseClient.functions.invoke("stripe-change-plan", { body: { tier, interval } });
+    if (error || !data || !data.ok) throw new Error(await fnErrorMessage(error, data, "Impossible de changer de formule pour le moment."));
+    // Stripe prévient la base en quelques secondes : on attend que la nouvelle formule apparaisse
+    for (let i = 0; i < 8; i++) {
+      await new Promise(r => setTimeout(r, 1500));
+      const a2 = await loadAccess(true);
+      if (a2 && a2.tier === tier && a2.billing_interval === interval) break;
+    }
+    await renderSubscription();
+    const m2 = document.getElementById("sub-msg");
+    if (m2) m2.innerHTML = `<div class="ok-msg">Votre formule a été modifiée. Un e-mail de confirmation vous a été envoyé.</div>`;
+  } catch (e) {
+    btn.disabled = false; btn.textContent = old;
+    msg.innerHTML = `<div class="error-msg">${h(e.message || "Impossible de changer de formule pour le moment.")}</div>`;
+  }
+}
+
 async function openBillingPortal(btn){
   const msg = document.getElementById("sub-msg");
   msg.innerHTML = "";
@@ -1016,6 +1040,8 @@ async function renderSubscription(opts){
   const C = window.MADE_CONFIG;
   const subscribed = a.reason === "subscribed";
   const canChoose = !subscribed || a.cancel_at_period_end;
+  const canChange = subscribed && !!a.has_customer && !a.cancel_at_period_end && ["active", "trialing"].includes(a.status) && a.reason !== "admin";
+  const curInterval = a.billing_interval === "year" ? "year" : "month";
   const paywall = !a.access;
   const justPaid = statut === "ok";
   if (justPaid && !subscribed && (state.payPoll || 0) < 8) {
@@ -1037,6 +1063,25 @@ async function renderSubscription(opts){
         ${paywall ? `<p class="sub-muted">Vos fiches et vos photos sont conservées : elles seront de nouveau accessibles dès votre abonnement.</p>` : ""}
         ${a.has_customer ? `<button class="btn outline" id="portal-btn" style="width:100%;margin-top:8px;">Gérer mon abonnement et mes factures</button>` : ""}
       </div>
+      ${canChange ? `
+      <div class="card-box">
+        <h3 class="sub-h3">Changer de formule</h3>
+        <div class="view-switch interval-switch" id="chg-interval-switch">
+          <button type="button" data-interval="month" class="${curInterval === "month" ? "active" : ""}">Mensuel</button>
+          <button type="button" data-interval="year" class="${curInterval === "year" ? "active" : ""}">Annuel${C.YEARLY_NOTE ? ` · ${h(C.YEARLY_NOTE)}` : ""}</button>
+        </div>
+        ${(C.PLANS || []).map(p => `
+        <label class="plan-opt">
+          <input type="radio" name="chgplan" value="${h(p.id)}" ${p.id === a.tier ? "checked" : ""}>
+          <span>
+            <strong>${h(p.name)}</strong>${p.id === a.tier ? ` <span class="plan-note">formule actuelle</span>` : ""}
+            <span class="plan-price chg-price" data-m="${h(p.monthly)}" data-y="${h(p.yearly)}">${h(curInterval === "year" ? p.yearly : p.monthly)}</span>
+            <ul class="plan-feats">${(p.features || []).map(f => `<li>${h(f)}</li>`).join("")}</ul>
+          </span>
+        </label>`).join("")}
+        <button class="btn gold" id="change-plan-btn" style="width:100%;" disabled>Choisissez une autre formule</button>
+        <p class="sub-muted" style="margin-top:10px;" id="chg-note">${a.status === "trialing" ? "Votre période d'essai continue : rien n'est prélevé avant la date indiquée plus haut." : "La différence est calculée au prorata de la période en cours : elle est prélevée tout de suite sur votre moyen de paiement actuel (ou créditée si la nouvelle formule coûte moins cher)."}</p>
+      </div>` : ""}
       ${canChoose && a.reason !== "admin" ? `
       <div class="card-box">
         <h3 class="sub-h3">Choisissez votre formule</h3>
@@ -1075,6 +1120,26 @@ async function renderSubscription(opts){
   if (cgv && sb) {
     cgv.addEventListener("change", () => { sb.disabled = !cgv.checked; });
     sb.addEventListener("click", () => startCheckout(document.querySelector('input[name="plan"]:checked').value, interval, sb));
+  }
+  const cb = document.getElementById("change-plan-btn");
+  if (cb) {
+    let chgInterval = curInterval;
+    const refreshChg = () => {
+      const sel = document.querySelector('input[name="chgplan"]:checked');
+      const same = !sel || (sel.value === a.tier && chgInterval === curInterval);
+      const plan = sel ? planById(sel.value) : null;
+      cb.disabled = same;
+      cb.textContent = same || !plan ? "Choisissez une autre formule" : `Passer à ${plan.name} (${chgInterval === "year" ? plan.yearly : plan.monthly})`;
+    };
+    document.querySelectorAll("#chg-interval-switch button").forEach(b => b.addEventListener("click", () => {
+      chgInterval = b.dataset.interval;
+      document.querySelectorAll("#chg-interval-switch button").forEach(x => x.classList.toggle("active", x === b));
+      document.querySelectorAll(".chg-price").forEach(el => { el.textContent = chgInterval === "year" ? el.dataset.y : el.dataset.m; });
+      refreshChg();
+    }));
+    document.querySelectorAll('input[name="chgplan"]').forEach(r => r.addEventListener("change", refreshChg));
+    cb.addEventListener("click", () => changePlan(document.querySelector('input[name="chgplan"]:checked').value, chgInterval, cb, a));
+    refreshChg();
   }
   const pb = document.getElementById("portal-btn");
   if (pb) pb.addEventListener("click", () => openBillingPortal(pb));
