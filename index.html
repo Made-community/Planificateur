@@ -111,6 +111,11 @@
     background:var(--white);color:var(--ink);
   }
   .field textarea{min-height:90px;resize:vertical;}
+  .stats-box{background:var(--beige,#f4efe1);border:1.5px solid var(--line2);border-radius:12px;padding:12px 14px;}
+  .stats-box .hint{font-size:12.5px;color:var(--muted);margin:0 0 10px;}
+  .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .stats-grid label{font-weight:600;font-size:12.5px;color:var(--green-dark);display:block;margin-bottom:4px;}
+  .stats-grid input,.stats-box input[type=url]{width:100%;padding:10px 12px;border:1.5px solid var(--line2);border-radius:10px;font-size:15px;background:#fff;font-family:inherit;}
   .field input:focus, .field select:focus, .field textarea:focus{
     outline:none;border-color:var(--gold);
   }
@@ -1963,7 +1968,7 @@ function tutorialHTML(){
         <li><strong>La barre en bas de l'écran</strong>, de gauche à droite : <strong>tâches à faire</strong> (la pastille indique combien il en reste), <strong>recherche</strong> dans vos fiches, <strong>aujourd'hui</strong>, <strong>+</strong> pour créer une fiche (vous choisissez la date, aujourd'hui par défaut), <strong>partage en lecture seule</strong> et <strong>corbeille</strong> (une fiche supprimée par erreur reste récupérable une semaine).</li>
         <li><strong>Partage en lecture seule</strong> (l'œil) : envoyez par e-mail un lien à votre coach (durée au choix : 1 h à illimité). Il voit votre calendrier sans pouvoir rien modifier, sans compte ni abonnement, et vous pouvez arrêter le partage quand vous voulez.</li>
         <li><strong>Déplacer une fiche</strong> : maintenez le doigt dessus, puis glissez-la sur un autre jour (un message permet d'annuler).</li>
-        <li><strong>Dans une fiche</strong> : plusieurs photos (glissez pour les faire défiler), liste de tâches à cocher, bouton vers votre page sur le réseau choisi. Vous pouvez aussi la <strong>dupliquer</strong>, la <strong>déplacer</strong> ou la mettre à la <strong>corbeille</strong>.</li>
+        <li><strong>Dans une fiche</strong> : plusieurs photos (glissez pour les faire défiler), liste de tâches à cocher, bouton vers votre page sur le réseau choisi ; quand une fiche est « Posté », vous pouvez noter ses <strong>statistiques</strong> (vues, J'aime, commentaires…) et le lien de la publication. Vous pouvez aussi la <strong>dupliquer</strong>, la <strong>déplacer</strong> ou la mettre à la <strong>corbeille</strong>.</li>
         <li><strong>En haut</strong> : touchez le logo et votre photo pour ouvrir votre profil (photo, réseaux sociaux, mot de passe, thème clair/sombre, déconnexion). Le menu à droite (« Mon calendrier ▾ ») permet de changer de calendrier si vous gérez plusieurs clients. Sur les autres pages, le bouton <strong>📅</strong> en bas à gauche vous ramène au calendrier.</li>
         <li><strong>📱 L'avoir comme une application sur votre téléphone</strong> (un raccourci sur l'écran d'accueil, sans passer par le navigateur) :
           <details style="margin-top:6px;"><summary style="cursor:pointer;color:var(--green-dark);font-weight:600;">iPhone / iPad (Safari)</summary>
@@ -2463,6 +2468,42 @@ function renderPhotoCarousel(){
   }
 }
 
+const STAT_FIELDS = [["views","👁 Vues"],["reach","📣 Portée"],["likes","❤️ J'aime"],["comments","💬 Commentaires"],["shares","↗️ Partages"],["saves","🔖 Enregistrements"]];
+
+function ficheStatsHTML(card){
+  const st = (card && card.stats && typeof card.stats === "object") ? card.stats : {};
+  return `
+    <div class="field" id="f-stats-field" style="display:${card?.status === "publie" ? "block" : "none"};">
+      <label>📊 Statistiques de la publication</label>
+      <div class="stats-box">
+        <p class="hint">À remplir à la main, quand vous les avez (laissez vide ce qui ne vous intéresse pas).</p>
+        <div class="stats-grid">
+          ${STAT_FIELDS.map(([k, lbl]) => `
+            <div><label for="f-stat-${k}">${lbl}</label>
+            <input type="number" min="0" max="1000000000" step="1" inputmode="numeric" id="f-stat-${k}" value="${Number.isFinite(+st[k]) && st[k] !== null && st[k] !== "" && st[k] !== undefined ? +st[k] : ""}"></div>`).join("")}
+        </div>
+        <div style="margin-top:10px;">
+          <label for="f-post-url" style="font-weight:600;font-size:12.5px;color:var(--green-dark);display:block;margin-bottom:4px;">🔗 Lien de la publication (facultatif)</label>
+          <div style="display:flex;gap:8px;">
+            <input type="url" id="f-post-url" placeholder="https://…" value="${card ? h(card.post_url || "") : ""}" style="flex:1;">
+            <button type="button" class="btn outline" id="f-post-url-open" style="flex:none;padding:0 14px;" title="Ouvrir la publication">↗</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function readFicheStats(){
+  const out = {};
+  for (const [k] of STAT_FIELDS) {
+    const raw = (document.getElementById("f-stat-" + k)?.value ?? "").trim();
+    if (raw === "") continue;
+    const n = Math.floor(Number(raw));
+    if (Number.isFinite(n) && n >= 0 && n <= 1000000000) out[k] = n;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
 async function renderFiche(cardId, dateForNew){
   let card = null;
   if (cardId) {
@@ -2540,6 +2581,7 @@ async function renderFiche(cardId, dateForNew){
             <option value="publie" ${card?.status==="publie"?"selected":""}>Posté</option>
           </select>
         </div>
+        ${ficheStatsHTML(card)}
         ${card ? `
         <div class="field">
           <label>Déplacer cette fiche à une autre date</label>
@@ -2568,6 +2610,14 @@ async function renderFiche(cardId, dateForNew){
     document.getElementById("f-social-link-icon").className = PLATFORM_ICON[p] || PLATFORM_ICON["Autre"];
   }
   document.getElementById("f-platform").addEventListener("change", updateSocialLinkBtn);
+  document.getElementById("f-status").addEventListener("change", (e) => {
+    document.getElementById("f-stats-field").style.display = e.target.value === "publie" ? "block" : "none";
+  });
+  document.getElementById("f-post-url-open").addEventListener("click", () => {
+    const u = safeHttpUrl(document.getElementById("f-post-url").value.trim());
+    if (!u) { alert("Collez d'abord un lien valide (il doit commencer par https://)."); return; }
+    window.open(u, "_blank", "noopener,noreferrer");
+  });
   document.getElementById("f-social-link-btn").addEventListener("click", () => {
     const p = document.getElementById("f-platform").value;
     const link = (state.profile?.social_links || {})[p];
@@ -2782,6 +2832,7 @@ function ficheSnapshot(){
     platform: g("f-platform"), format: g("f-format"), category: g("f-category"),
     time: g("f-time"), desc: g("f-desc"), hashtags: g("f-hashtags"),
     observation: g("f-observation"), status: g("f-status"),
+    stats: STAT_FIELDS.map(([k]) => g("f-stat-" + k)).join("|"), postUrl: g("f-post-url"),
     images: ficheImages.map(i => i.url || "nouvelle:" + i.id),
     tasks: ficheTaskCardId ? null : ficheTasks.map(t => t.title + "|" + t.done)
   });
@@ -2853,6 +2904,8 @@ async function saveFiche(existingCard, dateStr, createNewAfter){
       hashtags: document.getElementById("f-hashtags").value.trim(),
       observation: document.getElementById("f-observation").value.trim(),
       status: document.getElementById("f-status").value,
+      stats: readFicheStats(),
+      post_url: (() => { const v = document.getElementById("f-post-url").value.trim(); if (!v) return null; const u = safeHttpUrl(v); if (!u) throw new Error("Le lien de la publication n'est pas valide : il doit commencer par https://"); return u; })(),
       image_urls: imageUrls,
       image_url: imageUrls[0] || null
     };
