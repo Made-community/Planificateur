@@ -17,6 +17,7 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(req.url);
   if (req.method !== "GET" || url.origin !== self.location.origin) return; // uniquement notre propre site
   if (req.mode !== "navigate") return;                                       // uniquement la page principale
+  if (url.pathname !== "/" && !url.pathname.endsWith("/index.html")) return; // pas les pages publiques (présentation, suppression des données)
   e.respondWith((async () => {
     try {
       const fresh = await fetch(req);
