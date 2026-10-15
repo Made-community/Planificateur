@@ -3814,7 +3814,7 @@ const LEGAL = {
   dbRegion: "l'Union européenne (Irlande)",
   updated: "3 octobre 2026",
   cguUpdated: "4 octobre 2026",
-  cgvUpdated: "3 octobre 2026"
+  cgvUpdated: "15 octobre 2026"
 };
 
 function legalMentionsHTML(){
@@ -4052,6 +4052,7 @@ function legalCgvHTML(){
       <li>L'abonnement est conclu pour la durée choisie (un mois ou un an) et <strong>se renouvelle automatiquement</strong> à chaque échéance.</li>
       <li>L'abonné peut le <strong>résilier à tout moment</strong> depuis la page « Mon abonnement » (bouton « Gérer mon abonnement »). La résiliation prend effet à la fin de la période déjà payée : l'accès reste ouvert jusqu'à cette date.</li>
       <li>Sauf obligation légale contraire, toute période commencée est due et n'est pas remboursée au prorata.</li>
+      <li><strong>Suppression du compte :</strong> pour supprimer son compte, l'abonné doit d'abord résilier son abonnement. La suppression du compte est définitive et met fin immédiatement à l'accès au service, y compris pour la période déjà payée, qui n'est pas remboursée (sauf obligation légale contraire, notamment en cas d'exercice du droit de rétractation). Aucun nouveau paiement n'est prélevé après la résiliation.</li>
     </ul>
 
     <h3>7. Droit de rétractation</h3>
@@ -4282,6 +4283,7 @@ function renderProfile(){
         </div>
         <button class="btn outline" id="export-btn" style="width:100%;margin-bottom:18px;">⬇ Exporter mes données</button>
         <p>Supprimer mon compte efface aussi tous vos clients, fiches et photos. <strong>Cette action est irréversible.</strong></p>
+        ${billingOn() ? `<p style="font-size:13px;color:var(--muted);">Si vous avez un abonnement payant, <strong>résiliez-le d'abord</strong> (Mon abonnement → « Gérer mon abonnement »). Votre accès s'arrête dès la suppression du compte : la période déjà payée n'est pas remboursée.</p>` : ""}
         <div class="field">
           <label for="del-confirm">Pour confirmer, tapez SUPPRIMER</label>
           <input type="text" id="del-confirm" autocomplete="off" autocapitalize="characters" placeholder="SUPPRIMER">
@@ -4331,7 +4333,9 @@ function renderProfile(){
         return;
       }
     }
-    if (!confirm("Supprimer définitivement votre compte, vos clients, vos fiches et vos photos ? Impossible à annuler.")) return;
+    const subNote = (billingOn() && state.access && state.access.reason === "subscribed")
+      ? "\n\nVotre accès s'arrêtera immédiatement : la période d'abonnement déjà payée ne sera pas remboursée." : "";
+    if (!confirm("Supprimer définitivement votre compte, vos clients, vos fiches et vos photos ? Impossible à annuler." + subNote)) return;
     delBtn.disabled = true; delBtn.textContent = "Suppression en cours...";
     try {
       ficheDirtyCheck = null;
