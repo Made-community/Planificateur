@@ -106,7 +106,7 @@
   .field{margin-bottom:16px;}
   .field label{display:block;font-weight:600;font-size:13px;color:var(--green-dark);margin-bottom:6px;}
   .field input[type=text], .field input[type=email], .field input[type=password],
-  .field select, .field textarea{
+  .field input[type=time], .field select, .field textarea{
     width:100%;padding:11px 12px;border:1.5px solid var(--line2);border-radius:10px;
     background:var(--white);color:var(--ink);
   }
@@ -2799,10 +2799,10 @@ async function renderFiche(cardId, dateForNew){
         </div>
         <div class="field">
           <label>Heure de publication</label>
-          <select id="f-time">
-            <option value="">—</option>
-            ${HOURS.map(hh => `<option ${card?.post_time===hh?"selected":""}>${hh}</option>`).join("")}
-          </select>
+          <div style="display:flex;gap:8px;">
+            <input type="time" id="f-time" step="60" value="${h(/^\d{2}:\d{2}/.test(card?.post_time || "") ? String(card.post_time).slice(0, 5) : "")}" style="flex:1;min-width:0;">
+            <button type="button" class="btn outline" id="f-time-clear" style="flex:none;padding:0 14px;" title="Effacer l'heure">Effacer</button>
+          </div>
         </div>
         <div class="field">
           <label>Description</label>
@@ -2857,6 +2857,7 @@ async function renderFiche(cardId, dateForNew){
     document.getElementById("f-social-link-icon").className = PLATFORM_ICON[p] || PLATFORM_ICON["Autre"];
   }
   document.getElementById("f-platform").addEventListener("change", updateSocialLinkBtn);
+  document.getElementById("f-time-clear").addEventListener("click", () => { document.getElementById("f-time").value = ""; });
   document.getElementById("f-status").addEventListener("change", (e) => {
     document.getElementById("f-stats-field").style.display = e.target.value === "publie" ? "block" : "none";
   });
