@@ -131,6 +131,12 @@
   .st-row .bar{flex:1;background:rgba(201,163,77,.18);border-radius:6px;height:14px;overflow:hidden;}
   .st-row .bar i{display:block;height:100%;background:var(--gold);border-radius:6px;}
   .st-row .num{flex:0 0 auto;min-width:64px;text-align:right;font-weight:700;color:var(--green-dark);}
+  .st-scroll{overflow-x:auto;margin:6px -4px 4px;padding:0 4px;}
+  .st-tbl{border-collapse:collapse;font-size:13px;min-width:100%;}
+  .st-tbl th,.st-tbl td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line2);white-space:nowrap;}
+  .st-tbl th{font-weight:700;color:var(--green-dark);} .st-tbl th small{display:block;font-weight:400;color:var(--muted);font-size:10.5px;}
+  .st-tbl th.rl{text-align:left;position:sticky;left:0;background:var(--white);} .st-tbl td.tt{font-weight:800;color:var(--green-dark);}
+  .st-tbl tr.ft td,.st-tbl tr.ft th{color:var(--muted);font-size:12px;font-weight:600;}
   .st-top{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line2);cursor:pointer;font-size:13.5px;}
   .st-top:first-of-type{border-top:0;}
   .st-top .rk{flex:0 0 22px;font-weight:800;color:var(--gold);}
@@ -2305,6 +2311,48 @@ function statsBars(list, cap){
       <span class="num">${fmtNum(x.avg)} <small style="font-weight:400;color:var(--muted);">(${x.n})</small></span></div>`).join("");
 }
 
+/* ---- Répartition par catégorie et par mois ---- */
+async function loadCatRows(per){
+  return await fetchAllRows(() => scopeToCurrentCalendar(
+    supabaseClient.from("content_cards").select("id, card_date, status, category")
+      .is("deleted_at", null).gte("card_date", per.curFrom).lte("card_date", per.to))
+    .order("card_date", { ascending: true }).order("id"));
+}
+function computeCategoryMix(rows, per, scope){
+  const list = rows.filter(c => scope === "all" || c.status === "publie");
+  const [sy, sm] = per.curFrom.split("-").map(Number), [ey, em] = per.to.split("-").map(Number);
+  const months = [];
+  for (let i = sy * 12 + (sm - 1); i <= ey * 12 + (em - 1); i++) months.push({ key: Math.floor(i / 12) + "-" + String((i % 12) + 1).padStart(2, "0"), y: Math.floor(i / 12), m: i % 12 });
+  const NONE = "Sans catégorie";
+  const count = {}, monthTotal = {}, catTotal = {};
+  list.forEach(c => {
+    const cat = c.category || NONE, mk = String(c.card_date).slice(0, 7);
+    (count[cat] = count[cat] || {})[mk] = ((count[cat] || {})[mk] || 0) + 1;
+    monthTotal[mk] = (monthTotal[mk] || 0) + 1;
+    catTotal[cat] = (catTotal[cat] || 0) + 1;
+  });
+  const known = CATEGORIES.filter(c => catTotal[c]);
+  const others = Object.keys(catTotal).filter(c => !CATEGORIES.includes(c) && c !== NONE);
+  const cats = [...known, ...others, ...(catTotal[NONE] ? [NONE] : [])];
+  const total = list.length;
+  return { months, cats, count, monthTotal, catTotal, total, scope };
+}
+const pctOf = (n, t) => t > 0 ? Math.round(n / t * 100) + " %" : "–";
+
+function catMixHTML(M){
+  if (!M.total) return `<div class="st-note">Aucune fiche${M.scope === "publie" ? " postée" : ""} sur cette période.</div>`;
+  if (M.months.length === 1) {
+    const mk = M.months[0].key, t = M.monthTotal[mk] || 0;
+    return M.cats.map(cat => { const n = (M.count[cat] || {})[mk] || 0; const pc = t ? n / t * 100 : 0;
+      return `<div class="st-row"><span class="nm">${h(cat)}</span><span class="bar"><i style="width:${Math.max(n ? 4 : 0, Math.round(pc))}%"></i></span><span class="num">${Math.round(pc)} % <small style="font-weight:400;color:var(--muted);">(${n})</small></span></div>`; }).join("")
+      + `<div class="st-note">${t} fiche${t > 1 ? "s" : ""} au total ce mois-ci.</div>`;
+  }
+  const head = M.months.map(mo => `<th>${h(MONTHS_SHORT[mo.m])}<small>${String(mo.y).slice(2)}</small></th>`).join("");
+  const tr = M.cats.map(cat => `<tr><th class="rl">${h(cat)}</th>${M.months.map(mo => `<td>${pctOf((M.count[cat] || {})[mo.key] || 0, M.monthTotal[mo.key] || 0)}</td>`).join("")}<td class="tt">${pctOf(M.catTotal[cat], M.total)}</td></tr>`).join("");
+  const foot = `<tr class="ft"><th class="rl">Fiches</th>${M.months.map(mo => `<td>${M.monthTotal[mo.key] || 0}</td>`).join("")}<td class="tt">${M.total}</td></tr>`;
+  return `<div class="st-scroll"><table class="st-tbl"><tr><th class="rl"></th>${head}<th>Total</th></tr>${tr}${foot}</table></div>`;
+}
+
 async function renderStats(){
   const now = new Date();
   const sv = state.stats = state.stats || { mode: "month", y: now.getFullYear(), m: now.getMonth(), metric: "views" };
@@ -2313,10 +2361,12 @@ async function renderStats(){
     <div class="page-title-row"><button class="back-btn" onclick="location.hash='#/'">‹</button><h2>Mes statistiques</h2></div>
     <div id="stats-wrap"><div class="center"><div class="spinner"></div></div></div>`;
   const per = statsPeriod(sv);
-  let rows;
-  try { rows = await loadStatsRows(per); }
+  let rows, catRows;
+  try { [rows, catRows] = await Promise.all([loadStatsRows(per), loadCatRows(per)]); }
   catch (e) { document.getElementById("stats-wrap").innerHTML = `<div class="error-msg">${h(friendlyError(e.message || String(e)))}</div>`; return; }
   const R = computeStats(rows, per, sv.metric);
+  if (!sv.catScope) sv.catScope = "all";
+  const M = state.statsMix = computeCategoryMix(catRows, per, sv.catScope);
   const mlabel = STAT_LABEL[sv.metric];
   const modes = [["month", "Mois"], ["3m", "3 mois"], ["12m", "12 mois"]];
 
@@ -2345,6 +2395,12 @@ async function renderStats(){
     </div>
     ${R.missing.length ? `<div class="st-missing"><span>📊 <b>${R.missing.length}</b> publication${R.missing.length > 1 ? "s" : ""} postée${R.missing.length > 1 ? "s" : ""} sans statistiques.</span>
       <button class="btn outline" style="padding:6px 12px;" onclick="location.hash='#/fiche/${h(R.missing[0].id)}'">Compléter</button></div>` : ""}
+    <div class="st-sec">
+      <h3>🗂 Répartition par catégorie</h3>
+      <div class="st-chips" id="st-scope"><button type="button" data-s="all" class="${sv.catScope === "all" ? "active" : ""}">Toutes les fiches</button><button type="button" data-s="publie" class="${sv.catScope === "publie" ? "active" : ""}">Postées seulement</button></div>
+      ${catMixHTML(M)}
+      <div class="st-note">Part de chaque catégorie dans les fiches de chaque mois (en %${M.months.length === 1 ? ", le nombre de fiches entre parenthèses" : ""}).</div>
+    </div>
     ${!R.anyData ? `<div class="empty-state">Aucune statistique saisie sur cette période.<br>Ouvrez une fiche « Posté » et remplissez la section « Statistiques de la publication ».</div>` : `
     <div class="st-sec">
       <h3>Comparer selon…</h3>
@@ -2362,6 +2418,7 @@ async function renderStats(){
     <button class="btn gold" style="width:100%;margin:6px 0 20px;" id="st-pdf">📄 Exporter le bilan en PDF</button>`}
   `;
   document.querySelectorAll("#st-modes button").forEach(b => b.addEventListener("click", () => { sv.mode = b.dataset.m; renderStats(); }));
+  document.querySelectorAll("#st-scope button").forEach(b => b.addEventListener("click", () => { sv.catScope = b.dataset.s; renderStats(); }));
   document.querySelectorAll("#st-metrics button").forEach(b => b.addEventListener("click", () => { sv.metric = b.dataset.k; renderStats(); }));
   const pdf = document.getElementById("st-pdf");
   if (pdf) pdf.addEventListener("click", () => exportStatsPdf(R, per, calName));
@@ -2389,6 +2446,12 @@ async function exportStatsPdf(R, per, calName){
       `<tr><td style="${td}">Publications postées</td><td style="${td}">${R.cur.length}</td><td style="${td}">${R.prev.length}</td><td style="${td}">${dlt(R.cur.length, R.prev.length)}</td></tr>` +
       R.tiles.filter(t => t.cur > 0 || t.prev > 0).map(t => `<tr><td style="${td}">${h(t.lbl)}</td><td style="${td}">${fmtNum(t.cur)}</td><td style="${td}">${fmtNum(t.prev)}</td><td style="${td}">${dlt(t.cur, t.prev)}</td></tr>`).join("") +
       (R.eng !== null ? `<tr><td style="${td}">Engagement (interactions / vues)</td><td style="${td}">${fmtPct(R.eng)}</td><td style="${td}">${fmtPct(R.engPrev)}</td><td style="${td}"></td></tr>` : ""))}
+    <div class="pr-h">Répartition par catégorie (${state.statsMix && state.statsMix.scope === "publie" ? "fiches postées" : "toutes les fiches"})</div>
+    ${(() => { const M = state.statsMix; if (!M || !M.total) return `<div class="pr-txt">–</div>`;
+      const cell = (x) => `<td style="${td}">${x}</td>`;
+      return tbl(["Catégorie", ...M.months.map(mo => MONTHS_SHORT[mo.m] + " " + String(mo.y).slice(2)), ...(M.months.length > 1 ? ["Total"] : [])],
+        M.cats.map(cat => `<tr>${cell(h(cat))}${M.months.map(mo => cell(pctOf((M.count[cat] || {})[mo.key] || 0, M.monthTotal[mo.key] || 0))).join("")}${M.months.length > 1 ? cell(pctOf(M.catTotal[cat], M.total)) : ""}</tr>`).join("") +
+        `<tr>${cell("Fiches")}${M.months.map(mo => cell(M.monthTotal[mo.key] || 0)).join("")}${M.months.length > 1 ? cell(M.total) : ""}</tr>`); })()}
     <div class="pr-h">Meilleures publications (${h(mlabel)})</div>
     ${R.top.length ? tbl(["Date", "Réseau · format", mlabel], R.top.map(c => `<tr><td style="${td}">${h(formatFrDate(c.card_date))}</td><td style="${td}">${h(c.platform || "")} · ${h(c.format || "")}</td><td style="${td}">${fmtNum(cardStats(c)[sv.metric])}</td></tr>`).join("")) : `<div class="pr-txt">–</div>`}
     <div class="pr-h">Par réseau</div>${list(R.byPlatform)}
